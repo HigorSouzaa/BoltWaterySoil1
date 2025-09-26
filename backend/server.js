@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
+const userRoutes  = require("./routes/userRoutes");
 dotenv.config();
 require("./config/database.js");
 
@@ -11,7 +12,7 @@ app.use(cors());
 app.use(express.json());
 
 // Rotas das aplicações
-// app.use()
+app.use("/api/v1/users", userRoutes)
 
 // Rota de status dos serviços
 app.get("/", (req, res) => res.send("API rodando!!"));

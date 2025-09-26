@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { Droplets, Mail, Lock, User, ArrowLeft } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Droplets, Mail, Lock, User, ArrowLeft, AlertCircle } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext'; // Import atualizado
 
 interface AuthProps {
   onLogin: () => void;
@@ -7,6 +8,7 @@ interface AuthProps {
 }
 
 const Auth: React.FC<AuthProps> = ({ onLogin, onBackToLanding }) => {
+  const { login, register, isLoading, error, clearError } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState({
     name: '',
@@ -14,10 +16,34 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onBackToLanding }) => {
     password: ''
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Limpar erro quando trocar de modo (login/registro)
+  useEffect(() => {
+    clearError();
+  }, [isLogin, clearError]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Simulate authentication
-    onLogin();
+
+    try {
+      if (isLogin) {
+        await login({
+          email: formData.email,
+          pass: formData.password
+        });
+      } else {
+        await register({
+          name: formData.name,
+          email: formData.email,
+          pass: formData.password
+        });
+      }
+      
+      // Sucesso - chama callback do pai
+      onLogin();
+    } catch (err) {
+      // Erro já foi tratado no contexto
+      console.error('Erro na autenticação:', err);
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -25,6 +51,12 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onBackToLanding }) => {
       ...formData,
       [e.target.name]: e.target.value
     });
+  };
+
+  const toggleAuthMode = () => {
+    setIsLogin(!isLogin);
+    clearError();
+    setFormData({ name: '', email: '', password: '' });
   };
 
   return (
@@ -60,6 +92,14 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onBackToLanding }) => {
             </p>
           </div>
 
+          {/* Error Message */}
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3">
+              <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0" />
+              <p className="text-red-700 text-sm">{error}</p>
+            </div>
+          )}
+
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
             {!isLogin && (
@@ -75,7 +115,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onBackToLanding }) => {
                     name="name"
                     value={formData.name}
                     onChange={handleInputChange}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                    disabled={isLoading}
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 disabled:bg-gray-50"
                     placeholder="Seu nome completo"
                     required
                   />
@@ -95,7 +136,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onBackToLanding }) => {
                   name="email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                  disabled={isLoading}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 disabled:bg-gray-50"
                   placeholder="seu@email.com"
                   required
                 />
@@ -114,7 +156,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onBackToLanding }) => {
                   name="password"
                   value={formData.password}
                   onChange={handleInputChange}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                  disabled={isLoading}
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 disabled:bg-gray-50"
                   placeholder="••••••••"
                   required
                 />
@@ -135,9 +178,10 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onBackToLanding }) => {
           
             <button
               type="submit"
-              className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 px-4 rounded-xl font-semibold hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
+              disabled={isLoading}
+              className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 px-4 rounded-xl font-semibold hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             >
-              {isLogin ? 'Entrar' : 'Criar Conta'}
+              {isLoading ? 'Carregando...' : (isLogin ? 'Entrar' : 'Criar Conta')}
             </button>
           </form>
 
@@ -146,8 +190,9 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onBackToLanding }) => {
             <p className="text-gray-600">
               {isLogin ? 'Não tem uma conta?' : 'Já tem uma conta?'}{' '}
               <button
-                onClick={() => setIsLogin(!isLogin)}
-                className="text-blue-600 hover:text-blue-700 font-semibold transition-colors duration-200"
+                onClick={toggleAuthMode}
+                disabled={isLoading}
+                className="text-blue-600 hover:text-blue-700 font-semibold transition-colors duration-200 disabled:opacity-50"
               >
                 {isLogin ? 'Cadastre-se' : 'Entre aqui'}
               </button>
