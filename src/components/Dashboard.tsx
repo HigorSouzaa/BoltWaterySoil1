@@ -1,22 +1,46 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Droplets, 
-  Leaf, 
-  Thermometer, 
-  BarChart3, 
-  Settings, 
-  Bell, 
+import {
+  Droplets,
+  Leaf,
+  Thermometer,
+  BarChart3,
+  Settings,
+  Bell,
   User,
   LogOut,
   TrendingUp,
   AlertTriangle,
   CheckCircle,
   Activity,
-  MapPin
+  MapPin,
+  Calendar,
+  Cpu,
+  Home
 } from 'lucide-react';
+import { EnvironmentManager } from './EnvironmentManager';
+import { UserSettings } from './UserSettings';
+import { ArduinoModules } from './ArduinoModules';
+import { MaintenanceSchedule } from './MaintenanceSchedule';
+import { supabase } from '../services/authService';
 
 interface DashboardProps {
   onLogout: () => void;
+}
+
+interface UserPreferences {
+  active_environment_id: string | null;
+  active_sector_id: string | null;
+}
+
+interface Environment {
+  id: string;
+  name: string;
+}
+
+interface Sector {
+  id: string;
+  name: string;
+  environment_id: string;
 }
 
 interface SensorData {
@@ -32,6 +56,9 @@ interface SensorData {
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
+  const [currentView, setCurrentView] = useState<'dashboard' | 'environments' | 'modules' | 'maintenance' | 'settings'>('dashboard');
+  const [activeEnvironment, setActiveEnvironment] = useState<Environment | null>(null);
+  const [activeSector, setActiveSector] = useState<Sector | null>(null);
   const [sensorData, setSensorData] = useState<SensorData[]>([
     {
       id: 'humidity',
@@ -85,10 +112,46 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     { id: 3, type: 'success', message: 'pH otimizado com sucesso', time: '1 dia atrás' }
   ]);
 
-  // Simulate real-time data updates
+  useEffect(() => {
+    loadActiveLocation();
+  }, []);
+
+  const loadActiveLocation = async () => {
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      if (!userData.user) return;
+
+      const { data: prefs } = await supabase
+        .from('user_preferences')
+        .select('active_environment_id, active_sector_id')
+        .eq('user_id', userData.user.id)
+        .maybeSingle();
+
+      if (prefs?.active_environment_id) {
+        const { data: env } = await supabase
+          .from('environments')
+          .select('id, name')
+          .eq('id', prefs.active_environment_id)
+          .maybeSingle();
+        setActiveEnvironment(env);
+      }
+
+      if (prefs?.active_sector_id) {
+        const { data: sector } = await supabase
+          .from('sectors')
+          .select('id, name, environment_id')
+          .eq('id', prefs.active_sector_id)
+          .maybeSingle();
+        setActiveSector(sector);
+      }
+    } catch (error) {
+      console.error('Error loading active location:', error);
+    }
+  };
+
   useEffect(() => {
     const interval = setInterval(() => {
-      setSensorData(prevData => 
+      setSensorData(prevData =>
         prevData.map(sensor => ({
           ...sensor,
           value: sensor.value + (Math.random() - 0.5) * 2
@@ -138,14 +201,40 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
               </div>
               <div className="hidden sm:flex items-center space-x-2 ml-6">
                 <MapPin className="h-4 w-4 text-gray-500" />
-                <span className="text-sm text-gray-600">Fazenda São João - Setor A</span>
+                <span className="text-sm text-gray-600">
+                  {activeEnvironment && activeSector
+                    ? `${activeEnvironment.name} - ${activeSector.name}`
+                    : 'Nenhum setor ativo'}
+                </span>
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
-                <Bell className="h-5 w-5" />
+              <button
+                onClick={() => setCurrentView('environments')}
+                className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                title="Ambientes e Setores"
+              >
+                <Home className="h-5 w-5" />
               </button>
-              <button className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+              <button
+                onClick={() => setCurrentView('modules')}
+                className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                title="Módulos Arduino"
+              >
+                <Cpu className="h-5 w-5" />
+              </button>
+              <button
+                onClick={() => setCurrentView('maintenance')}
+                className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                title="Manutenção"
+              >
+                <Calendar className="h-5 w-5" />
+              </button>
+              <button
+                onClick={() => setCurrentView('settings')}
+                className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                title="Configurações"
+              >
                 <Settings className="h-5 w-5" />
               </button>
               <div className="flex items-center space-x-3">
@@ -165,6 +254,15 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
         </div>
       </header>
 
+      {currentView === 'environments' ? (
+        <EnvironmentManager />
+      ) : currentView === 'modules' ? (
+        <ArduinoModules />
+      ) : currentView === 'maintenance' ? (
+        <MaintenanceSchedule />
+      ) : currentView === 'settings' ? (
+        <UserSettings />
+      ) : (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Welcome Section */}
         <div className="mb-8">
@@ -313,6 +411,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 };
