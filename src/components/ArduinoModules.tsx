@@ -1,29 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, CreditCard as Edit2, Trash2, Wifi, WifiOff, AlertCircle, Settings } from 'lucide-react';
-import { supabase } from '../services/authService';
-
-interface ArduinoModule {
-  id: string;
-  sector_id: string;
-  name: string;
-  module_type: string;
-  status: string;
-  ip_address: string | null;
-  last_ping: string | null;
-  configuration: any;
-  created_at: string;
-}
-
-interface Sector {
-  id: string;
-  name: string;
-  environment_id: string;
-}
-
-interface Environment {
-  id: string;
-  name: string;
-}
+import arduinoModuleService, { ArduinoModule } from '../services/arduinoModuleService';
+import sectorService, { Sector } from '../services/sectorService';
+import environmentService, { Environment } from '../services/environmentService';
 
 export const ArduinoModules: React.FC = () => {
   const [modules, setModules] = useState<ArduinoModule[]>([]);
@@ -58,131 +37,90 @@ export const ArduinoModules: React.FC = () => {
   }, [selectedSector]);
 
   const loadEnvironments = async () => {
-    const { data, error } = await supabase
-      .from('environments')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
+    try {
+      const data = await environmentService.getEnvironments();
+      setEnvironments(data || []);
+    } catch (error) {
       console.error('Error loading environments:', error);
-      return;
     }
-
-    setEnvironments(data || []);
   };
 
   const loadSectors = async () => {
-    const { data, error } = await supabase
-      .from('sectors')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
+    try {
+      const data = await sectorService.getSectors();
+      setSectors(data || []);
+      if (data && data.length > 0 && !selectedSector) {
+        setSelectedSector(data[0]._id);
+      }
+    } catch (error) {
       console.error('Error loading sectors:', error);
-      return;
-    }
-
-    setSectors(data || []);
-    if (data && data.length > 0 && !selectedSector) {
-      setSelectedSector(data[0].id);
     }
   };
 
   const loadModules = async () => {
     if (!selectedSector) return;
 
-    const { data, error } = await supabase
-      .from('arduino_modules')
-      .select('*')
-      .eq('sector_id', selectedSector)
-      .order('created_at', { ascending: false });
-
-    if (error) {
+    try {
+      const data = await arduinoModuleService.getArduinoModules(selectedSector);
+      setModules(data || []);
+    } catch (error) {
       console.error('Error loading modules:', error);
-      return;
     }
-
-    setModules(data || []);
   };
 
   const handleSaveModule = async () => {
     if (!moduleForm.name.trim() || !selectedSector) return;
 
-    if (editingModule) {
-      const { error } = await supabase
-        .from('arduino_modules')
-        .update({
+    try {
+      if (editingModule) {
+        await arduinoModuleService.updateArduinoModule(editingModule._id, {
           name: moduleForm.name,
-          module_type: moduleForm.module_type,
-          ip_address: moduleForm.ip_address || null,
+          module_type: moduleForm.module_type as any,
+          ip_address: moduleForm.ip_address || undefined,
           configuration: moduleForm.configuration
-        })
-        .eq('id', editingModule.id);
-
-      if (error) {
-        console.error('Error updating module:', error);
-        return;
-      }
-    } else {
-      const { error } = await supabase
-        .from('arduino_modules')
-        .insert([{
+        });
+      } else {
+        await arduinoModuleService.createArduinoModule({
           name: moduleForm.name,
-          module_type: moduleForm.module_type,
+          module_type: moduleForm.module_type as any,
           sector_id: selectedSector,
-          ip_address: moduleForm.ip_address || null,
-          configuration: moduleForm.configuration,
-          status: 'offline'
-        }]);
-
-      if (error) {
-        console.error('Error creating module:', error);
-        return;
+          ip_address: moduleForm.ip_address || undefined,
+          configuration: moduleForm.configuration
+        });
       }
-    }
 
-    setShowModal(false);
-    setEditingModule(null);
-    setModuleForm({
-      name: '',
-      module_type: 'sensor',
-      ip_address: '',
-      configuration: {}
-    });
-    loadModules();
+      setShowModal(false);
+      setEditingModule(null);
+      setModuleForm({
+        name: '',
+        module_type: 'sensor',
+        ip_address: '',
+        configuration: {}
+      });
+      loadModules();
+    } catch (error) {
+      console.error('Error saving module:', error);
+    }
   };
 
   const handleDeleteModule = async (id: string) => {
     if (!confirm('Tem certeza que deseja excluir este módulo?')) return;
 
-    const { error } = await supabase
-      .from('arduino_modules')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
+    try {
+      await arduinoModuleService.deleteArduinoModule(id);
+      loadModules();
+    } catch (error) {
       console.error('Error deleting module:', error);
-      return;
     }
-
-    loadModules();
   };
 
   const handlePingModule = async (moduleId: string) => {
-    const { error } = await supabase
-      .from('arduino_modules')
-      .update({
-        last_ping: new Date().toISOString(),
-        status: 'operational'
-      })
-      .eq('id', moduleId);
-
-    if (error) {
+    try {
+      await arduinoModuleService.pingArduinoModule(moduleId);
+      loadModules();
+    } catch (error) {
       console.error('Error pinging module:', error);
-      return;
     }
-
-    loadModules();
   };
 
   const openEditModule = (module: ArduinoModule) => {
@@ -236,9 +174,10 @@ export const ArduinoModules: React.FC = () => {
   };
 
   const getSectorEnvironment = (sectorId: string) => {
-    const sector = sectors.find(s => s.id === sectorId);
+    const sector = sectors.find(s => s._id === sectorId);
     if (!sector) return '';
-    const env = environments.find(e => e.id === sector.environment_id);
+    const envId = typeof sector.environment_id === 'string' ? sector.environment_id : sector.environment_id._id;
+    const env = environments.find(e => e._id === envId);
     return env ? `${env.name} - ${sector.name}` : sector.name;
   };
 
@@ -283,8 +222,8 @@ export const ArduinoModules: React.FC = () => {
             >
               <option value="">Selecione um setor</option>
               {sectors.map((sector) => (
-                <option key={sector.id} value={sector.id}>
-                  {getSectorEnvironment(sector.id)}
+                <option key={sector._id} value={sector._id}>
+                  {getSectorEnvironment(sector._id)}
                 </option>
               ))}
             </select>
@@ -302,7 +241,7 @@ export const ArduinoModules: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {modules.map((module) => (
                 <div
-                  key={module.id}
+                  key={module._id}
                   className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition"
                 >
                   <div className="flex items-start justify-between mb-3">
@@ -332,7 +271,7 @@ export const ArduinoModules: React.FC = () => {
 
                   <div className="flex gap-2 mt-4">
                     <button
-                      onClick={() => handlePingModule(module.id)}
+                      onClick={() => handlePingModule(module._id)}
                       className="flex-1 text-sm bg-green-600 text-white px-3 py-2 rounded hover:bg-green-700 transition"
                     >
                       Testar
@@ -344,7 +283,7 @@ export const ArduinoModules: React.FC = () => {
                       <Edit2 size={18} />
                     </button>
                     <button
-                      onClick={() => handleDeleteModule(module.id)}
+                      onClick={() => handleDeleteModule(module._id)}
                       className="text-red-600 hover:text-red-700 p-2"
                     >
                       <Trash2 size={18} />

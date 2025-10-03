@@ -15,13 +15,15 @@ import {
   MapPin,
   Calendar,
   Cpu,
-  Home
+  Home,
+  Edit
 } from 'lucide-react';
 import { EnvironmentManager } from './EnvironmentManager';
 import { UserSettings } from './UserSettings';
 import { ArduinoModules } from './ArduinoModules';
 import { MaintenanceSchedule } from './MaintenanceSchedule';
-import { supabase } from '../services/authService';
+import environmentService from '../services/environmentService';
+import sectorService from '../services/sectorService';
 
 interface DashboardProps {
   onLogout: () => void;
@@ -32,13 +34,13 @@ interface UserPreferences {
   active_sector_id: string | null;
 }
 
-interface Environment {
-  id: string;
+interface DashboardEnvironment {
+  _id: string;
   name: string;
 }
 
-interface Sector {
-  id: string;
+interface DashboardSector {
+  _id: string;
   name: string;
   environment_id: string;
 }
@@ -57,8 +59,13 @@ interface SensorData {
 
 const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   const [currentView, setCurrentView] = useState<'dashboard' | 'environments' | 'modules' | 'maintenance' | 'settings'>('dashboard');
-  const [activeEnvironment, setActiveEnvironment] = useState<Environment | null>(null);
-  const [activeSector, setActiveSector] = useState<Sector | null>(null);
+  const [activeEnvironment, setActiveEnvironment] = useState<DashboardEnvironment | null>(null);
+  const [activeSector, setActiveSector] = useState<DashboardSector | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [availableEnvironments, setAvailableEnvironments] = useState<any[]>([]);
+  const [availableSectors, setAvailableSectors] = useState<any[]>([]);
+  const [selectedEnvironmentId, setSelectedEnvironmentId] = useState<string>('');
+  const [selectedSectorId, setSelectedSectorId] = useState<string>('');
   const [sensorData, setSensorData] = useState<SensorData[]>([
     {
       id: 'humidity',
@@ -118,31 +125,26 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
 
   const loadActiveLocation = async () => {
     try {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) return;
+      // Por enquanto, vamos carregar o primeiro ambiente e setor disponível
+      const environments = await environmentService.getEnvironments();
+      if (environments && environments.length > 0) {
+        const firstEnv = environments[0];
+        setActiveEnvironment({ _id: firstEnv._id, name: firstEnv.name });
 
-      const { data: prefs } = await supabase
-        .from('user_preferences')
-        .select('active_environment_id, active_sector_id')
-        .eq('user_id', userData.user.id)
-        .maybeSingle();
+        const sectors = await sectorService.getSectors(firstEnv._id);
+        if (sectors && sectors.length > 0) {
+          const firstSector = sectors[0];
+          // Extrai o ID do environment_id, seja ele string ou objeto
+          const environmentId = typeof firstSector.environment_id === 'string'
+            ? firstSector.environment_id
+            : firstSector.environment_id._id;
 
-      if (prefs?.active_environment_id) {
-        const { data: env } = await supabase
-          .from('environments')
-          .select('id, name')
-          .eq('id', prefs.active_environment_id)
-          .maybeSingle();
-        setActiveEnvironment(env);
-      }
-
-      if (prefs?.active_sector_id) {
-        const { data: sector } = await supabase
-          .from('sectors')
-          .select('id, name, environment_id')
-          .eq('id', prefs.active_sector_id)
-          .maybeSingle();
-        setActiveSector(sector);
+          setActiveSector({
+            _id: firstSector._id,
+            name: firstSector.name,
+            environment_id: environmentId
+          });
+        }
       }
     } catch (error) {
       console.error('Error loading active location:', error);
@@ -161,6 +163,72 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
 
     return () => clearInterval(interval);
   }, []);
+
+  // Função para carregar ambientes e setores disponíveis
+  const loadAvailableData = async () => {
+    try {
+      const environments = await environmentService.getEnvironments();
+      setAvailableEnvironments(environments);
+
+      if (environments.length > 0) {
+        const firstEnvId = selectedEnvironmentId || environments[0]._id;
+        setSelectedEnvironmentId(firstEnvId);
+
+        const sectors = await sectorService.getSectors(firstEnvId);
+        setAvailableSectors(sectors);
+
+        if (!selectedSectorId && sectors.length > 0) {
+          setSelectedSectorId(sectors[0]._id);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading available data:', error);
+    }
+  };
+
+  // Função para abrir o modal de edição
+  const openEditModal = async () => {
+    setSelectedEnvironmentId(activeEnvironment?._id || '');
+    setSelectedSectorId(activeSector?._id || '');
+    await loadAvailableData();
+    setShowEditModal(true);
+  };
+
+  // Função para salvar as alterações
+  const saveChanges = async () => {
+    try {
+      if (selectedEnvironmentId && selectedSectorId) {
+        const environment = availableEnvironments.find(env => env._id === selectedEnvironmentId);
+        const sector = availableSectors.find(sec => sec._id === selectedSectorId);
+
+        if (environment && sector) {
+          setActiveEnvironment({ _id: environment._id, name: environment.name });
+          setActiveSector({
+            _id: sector._id,
+            name: sector.name,
+            environment_id: sector.environment_id
+          });
+        }
+      }
+      setShowEditModal(false);
+    } catch (error) {
+      console.error('Error saving changes:', error);
+    }
+  };
+
+  // Função para carregar setores quando o ambiente muda
+  const handleEnvironmentChange = async (environmentId: string) => {
+    setSelectedEnvironmentId(environmentId);
+    try {
+      const sectors = await sectorService.getSectors(environmentId);
+      setAvailableSectors(sectors);
+      if (sectors.length > 0) {
+        setSelectedSectorId(sectors[0]._id);
+      }
+    } catch (error) {
+      console.error('Error loading sectors:', error);
+    }
+  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -193,12 +261,18 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
+              {/* Logo clicável */}
+              <button
+                onClick={() => setCurrentView('dashboard')}
+                className="flex items-center space-x-2 hover:opacity-80 transition-opacity"
+              >
                 <Droplets className="h-8 w-8 text-blue-600" />
                 <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">
                   WaterySoil
                 </span>
-              </div>
+              </button>
+
+              {/* Informações do ambiente/setor com botão de editar */}
               <div className="hidden sm:flex items-center space-x-2 ml-6">
                 <MapPin className="h-4 w-4 text-gray-500" />
                 <span className="text-sm text-gray-600">
@@ -206,6 +280,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
                     ? `${activeEnvironment.name} - ${activeSector.name}`
                     : 'Nenhum setor ativo'}
                 </span>
+                <button
+                  onClick={openEditModal}
+                  className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                  title="Editar ambiente e setor"
+                >
+                  <Edit className="h-4 w-4" />
+                </button>
               </div>
             </div>
             <div className="flex items-center space-x-4">
@@ -411,6 +492,78 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
           </div>
         </div>
       </div>
+      )}
+
+      {/* Modal de Edição de Ambiente e Setor */}
+      {showEditModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Editar Ambiente e Setor
+            </h3>
+
+            <div className="space-y-4">
+              {/* Seleção de Ambiente */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Ambiente
+                </label>
+                <select
+                  value={selectedEnvironmentId}
+                  onChange={(e) => handleEnvironmentChange(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  {availableEnvironments.map((env) => (
+                    <option key={env._id} value={env._id}>
+                      {env.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Seleção de Setor */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Setor
+                </label>
+                <select
+                  value={selectedSectorId}
+                  onChange={(e) => setSelectedSectorId(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  disabled={availableSectors.length === 0}
+                >
+                  {availableSectors.map((sector) => (
+                    <option key={sector._id} value={sector._id}>
+                      {sector.name}
+                    </option>
+                  ))}
+                </select>
+                {availableSectors.length === 0 && (
+                  <p className="text-sm text-gray-500 mt-1">
+                    Nenhum setor disponível para este ambiente
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Botões do Modal */}
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                onClick={() => setShowEditModal(false)}
+                className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={saveChanges}
+                disabled={!selectedEnvironmentId || !selectedSectorId}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Salvar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

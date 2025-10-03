@@ -1,22 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, CreditCard as Edit2, Trash2, MapPin } from 'lucide-react';
-import { supabase } from '../services/authService';
-
-interface Environment {
-  id: string;
-  name: string;
-  description: string | null;
-  created_at: string;
-}
-
-interface Sector {
-  id: string;
-  environment_id: string;
-  name: string;
-  description: string | null;
-  is_active: boolean;
-  created_at: string;
-}
+import environmentService, { Environment } from '../services/environmentService';
+import sectorService, { Sector } from '../services/sectorService';
 
 export const EnvironmentManager: React.FC = () => {
   const [environments, setEnvironments] = useState<Environment[]>([]);
@@ -42,175 +27,107 @@ export const EnvironmentManager: React.FC = () => {
   }, [selectedEnvironment]);
 
   const loadEnvironments = async () => {
-    const { data, error } = await supabase
-      .from('environments')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
+    try {
+      const data = await environmentService.getEnvironments();
+      setEnvironments(data || []);
+      if (data && data.length > 0 && !selectedEnvironment) {
+        setSelectedEnvironment(data[0]._id);
+      }
+    } catch (error) {
       console.error('Error loading environments:', error);
-      return;
-    }
-
-    setEnvironments(data || []);
-    if (data && data.length > 0 && !selectedEnvironment) {
-      setSelectedEnvironment(data[0].id);
     }
   };
 
   const loadSectors = async (environmentId: string) => {
-    const { data, error } = await supabase
-      .from('sectors')
-      .select('*')
-      .eq('environment_id', environmentId)
-      .order('created_at', { ascending: false });
-
-    if (error) {
+    try {
+      const data = await sectorService.getSectors(environmentId);
+      setSectors(data || []);
+    } catch (error) {
       console.error('Error loading sectors:', error);
-      return;
     }
-
-    setSectors(data || []);
   };
 
   const handleSaveEnvironment = async () => {
     if (!envForm.name.trim()) return;
 
-    if (editingEnv) {
-      const { error } = await supabase
-        .from('environments')
-        .update({ name: envForm.name, description: envForm.description })
-        .eq('id', editingEnv.id);
-
-      if (error) {
-        console.error('Error updating environment:', error);
-        return;
-      }
-    } else {
-      const { data: userData } = await supabase.auth.getUser();
-      if (!userData.user) return;
-
-      const { error } = await supabase
-        .from('environments')
-        .insert([{
+    try {
+      if (editingEnv) {
+        await environmentService.updateEnvironment(editingEnv._id, {
           name: envForm.name,
-          description: envForm.description,
-          user_id: userData.user.id
-        }]);
-
-      if (error) {
-        console.error('Error creating environment:', error);
-        return;
+          description: envForm.description
+        });
+      } else {
+        await environmentService.createEnvironment({
+          name: envForm.name,
+          description: envForm.description
+        });
       }
-    }
 
-    setShowEnvModal(false);
-    setEditingEnv(null);
-    setEnvForm({ name: '', description: '' });
-    loadEnvironments();
+      setShowEnvModal(false);
+      setEditingEnv(null);
+      setEnvForm({ name: '', description: '' });
+      loadEnvironments();
+    } catch (error) {
+      console.error('Error saving environment:', error);
+    }
   };
 
   const handleSaveSector = async () => {
     if (!sectorForm.name.trim() || !selectedEnvironment) return;
 
-    if (editingSector) {
-      const { error } = await supabase
-        .from('sectors')
-        .update({ name: sectorForm.name, description: sectorForm.description })
-        .eq('id', editingSector.id);
-
-      if (error) {
-        console.error('Error updating sector:', error);
-        return;
-      }
-    } else {
-      const { error } = await supabase
-        .from('sectors')
-        .insert([{
+    try {
+      if (editingSector) {
+        await sectorService.updateSector(editingSector._id, {
+          name: sectorForm.name,
+          description: sectorForm.description
+        });
+      } else {
+        await sectorService.createSector({
           name: sectorForm.name,
           description: sectorForm.description,
           environment_id: selectedEnvironment
-        }]);
-
-      if (error) {
-        console.error('Error creating sector:', error);
-        return;
+        });
       }
-    }
 
-    setShowSectorModal(false);
-    setEditingSector(null);
-    setSectorForm({ name: '', description: '' });
-    loadSectors(selectedEnvironment);
+      setShowSectorModal(false);
+      setEditingSector(null);
+      setSectorForm({ name: '', description: '' });
+      loadSectors(selectedEnvironment);
+    } catch (error) {
+      console.error('Error saving sector:', error);
+    }
   };
 
   const handleDeleteEnvironment = async (id: string) => {
     if (!confirm('Tem certeza que deseja excluir este ambiente? Todos os setores e módulos associados serão excluídos.')) return;
 
-    const { error } = await supabase
-      .from('environments')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
+    try {
+      await environmentService.deleteEnvironment(id);
+      if (selectedEnvironment === id) {
+        setSelectedEnvironment(null);
+      }
+      loadEnvironments();
+    } catch (error) {
       console.error('Error deleting environment:', error);
-      return;
     }
-
-    if (selectedEnvironment === id) {
-      setSelectedEnvironment(null);
-    }
-    loadEnvironments();
   };
 
   const handleDeleteSector = async (id: string) => {
     if (!confirm('Tem certeza que deseja excluir este setor? Todos os módulos associados serão excluídos.')) return;
 
-    const { error } = await supabase
-      .from('sectors')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
+    try {
+      await sectorService.deleteSector(id);
+      if (selectedEnvironment) {
+        loadSectors(selectedEnvironment);
+      }
+    } catch (error) {
       console.error('Error deleting sector:', error);
-      return;
-    }
-
-    if (selectedEnvironment) {
-      loadSectors(selectedEnvironment);
     }
   };
 
   const handleSetActiveSector = async (sectorId: string) => {
-    if (!selectedEnvironment) return;
-
-    await supabase
-      .from('sectors')
-      .update({ is_active: false })
-      .eq('environment_id', selectedEnvironment);
-
-    const { error } = await supabase
-      .from('sectors')
-      .update({ is_active: true })
-      .eq('id', sectorId);
-
-    if (error) {
-      console.error('Error setting active sector:', error);
-      return;
-    }
-
-    const { data: userData } = await supabase.auth.getUser();
-    if (userData.user) {
-      await supabase
-        .from('user_preferences')
-        .upsert({
-          user_id: userData.user.id,
-          active_environment_id: selectedEnvironment,
-          active_sector_id: sectorId
-        });
-    }
-
-    loadSectors(selectedEnvironment);
+    // Temporariamente comentado - será implementado posteriormente
+    console.log('Set active sector - será implementado', sectorId);
   };
 
   const openEditEnv = (env: Environment) => {
@@ -247,13 +164,13 @@ export const EnvironmentManager: React.FC = () => {
           <div className="space-y-2">
             {environments.map((env) => (
               <div
-                key={env.id}
+                key={env._id}
                 className={`p-4 rounded-lg border-2 cursor-pointer transition ${
-                  selectedEnvironment === env.id
+                  selectedEnvironment === env._id
                     ? 'border-blue-600 bg-blue-50'
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
-                onClick={() => setSelectedEnvironment(env.id)}
+                onClick={() => setSelectedEnvironment(env._id)}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -275,7 +192,7 @@ export const EnvironmentManager: React.FC = () => {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleDeleteEnvironment(env.id);
+                        handleDeleteEnvironment(env._id);
                       }}
                       className="text-red-600 hover:text-red-700 p-1"
                     >
@@ -317,7 +234,7 @@ export const EnvironmentManager: React.FC = () => {
             <div className="space-y-2">
               {sectors.map((sector) => (
                 <div
-                  key={sector.id}
+                  key={sector._id}
                   className={`p-4 rounded-lg border-2 transition ${
                     sector.is_active
                       ? 'border-green-600 bg-green-50'
@@ -340,7 +257,7 @@ export const EnvironmentManager: React.FC = () => {
                       )}
                       {!sector.is_active && (
                         <button
-                          onClick={() => handleSetActiveSector(sector.id)}
+                          onClick={() => handleSetActiveSector(sector._id)}
                           className="text-xs text-green-600 hover:text-green-700 mt-2"
                         >
                           Tornar ativo
@@ -355,7 +272,7 @@ export const EnvironmentManager: React.FC = () => {
                         <Edit2 size={16} />
                       </button>
                       <button
-                        onClick={() => handleDeleteSector(sector.id)}
+                        onClick={() => handleDeleteSector(sector._id)}
                         className="text-red-600 hover:text-red-700 p-1"
                       >
                         <Trash2 size={16} />

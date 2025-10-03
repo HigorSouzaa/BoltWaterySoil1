@@ -1,46 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, CreditCard as Edit2, Trash2, Calendar, CheckCircle, Clock, AlertTriangle } from 'lucide-react';
-import { supabase } from '../services/authService';
-
-interface MaintenanceSchedule {
-  id: string;
-  sector_id: string;
-  arduino_module_id: string | null;
-  title: string;
-  description: string | null;
-  scheduled_date: string;
-  completed_date: string | null;
-  status: string;
-  priority: string;
-  created_at: string;
-}
-
-interface Sector {
-  id: string;
-  name: string;
-  environment_id: string;
-}
-
-interface Environment {
-  id: string;
-  name: string;
-}
-
-interface ArduinoModule {
-  id: string;
-  name: string;
-  sector_id: string;
-}
+import maintenanceScheduleService, { MaintenanceSchedule as MaintenanceScheduleType } from '../services/maintenanceScheduleService';
+import sectorService, { Sector } from '../services/sectorService';
+import environmentService, { Environment } from '../services/environmentService';
+import arduinoModuleService, { ArduinoModule } from '../services/arduinoModuleService';
 
 export const MaintenanceSchedule: React.FC = () => {
-  const [schedules, setSchedules] = useState<MaintenanceSchedule[]>([]);
+  const [schedules, setSchedules] = useState<MaintenanceScheduleType[]>([]);
   const [sectors, setSectors] = useState<Sector[]>([]);
   const [environments, setEnvironments] = useState<Environment[]>([]);
   const [modules, setModules] = useState<ArduinoModule[]>([]);
   const [selectedSector, setSelectedSector] = useState<string>('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [showModal, setShowModal] = useState(false);
-  const [editingSchedule, setEditingSchedule] = useState<MaintenanceSchedule | null>(null);
+  const [editingSchedule, setEditingSchedule] = useState<MaintenanceScheduleType | null>(null);
   const [scheduleForm, setScheduleForm] = useState({
     title: '',
     description: '',
@@ -67,122 +40,66 @@ export const MaintenanceSchedule: React.FC = () => {
   }, [selectedSector, filterStatus]);
 
   const loadEnvironments = async () => {
-    const { data, error } = await supabase
-      .from('environments')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
+    try {
+      const data = await environmentService.getEnvironments();
+      setEnvironments(data || []);
+    } catch (error) {
       console.error('Error loading environments:', error);
-      return;
     }
-
-    setEnvironments(data || []);
   };
 
   const loadSectors = async () => {
-    const { data, error } = await supabase
-      .from('sectors')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
+    try {
+      const data = await sectorService.getSectors();
+      setSectors(data || []);
+      if (data && data.length > 0 && !selectedSector) {
+        setSelectedSector(data[0]._id);
+      }
+    } catch (error) {
       console.error('Error loading sectors:', error);
-      return;
-    }
-
-    setSectors(data || []);
-    if (data && data.length > 0 && !selectedSector) {
-      setSelectedSector(data[0].id);
     }
   };
 
   const loadModules = async () => {
     if (!selectedSector) return;
 
-    const { data, error } = await supabase
-      .from('arduino_modules')
-      .select('id, name, sector_id')
-      .eq('sector_id', selectedSector);
-
-    if (error) {
+    try {
+      const data = await arduinoModuleService.getArduinoModules(selectedSector);
+      setModules(data || []);
+    } catch (error) {
       console.error('Error loading modules:', error);
-      return;
     }
-
-    setModules(data || []);
   };
 
   const loadSchedules = async () => {
     if (!selectedSector) return;
 
-    let query = supabase
-      .from('maintenance_schedules')
-      .select('*')
-      .eq('sector_id', selectedSector);
+    try {
+      const filters = {
+        sector_id: selectedSector,
+        ...(filterStatus !== 'all' && { status: filterStatus })
+      };
+      const data = await maintenanceScheduleService.getMaintenanceSchedules(filters);
 
-    if (filterStatus !== 'all') {
-      query = query.eq('status', filterStatus);
-    }
+      const updatedSchedules = (data || []).map(schedule => {
+        const scheduledDate = new Date(schedule.scheduled_date);
+        const now = new Date();
 
-    const { data, error } = await query.order('scheduled_date', { ascending: true });
+        if (schedule.status === 'pending' && scheduledDate < now) {
+          return { ...schedule, status: 'overdue' as const };
+        }
+        return schedule;
+      });
 
-    if (error) {
+      setSchedules(updatedSchedules);
+    } catch (error) {
       console.error('Error loading schedules:', error);
-      return;
     }
-
-    const updatedSchedules = (data || []).map(schedule => {
-      const scheduledDate = new Date(schedule.scheduled_date);
-      const now = new Date();
-
-      if (schedule.status === 'pending' && scheduledDate < now) {
-        return { ...schedule, status: 'overdue' };
-      }
-      return schedule;
-    });
-
-    setSchedules(updatedSchedules);
   };
 
   const handleSaveSchedule = async () => {
-    if (!scheduleForm.title.trim() || !scheduleForm.scheduled_date || !selectedSector) return;
-
-    if (editingSchedule) {
-      const { error } = await supabase
-        .from('maintenance_schedules')
-        .update({
-          title: scheduleForm.title,
-          description: scheduleForm.description || null,
-          scheduled_date: scheduleForm.scheduled_date,
-          priority: scheduleForm.priority,
-          arduino_module_id: scheduleForm.arduino_module_id || null
-        })
-        .eq('id', editingSchedule.id);
-
-      if (error) {
-        console.error('Error updating schedule:', error);
-        return;
-      }
-    } else {
-      const { error } = await supabase
-        .from('maintenance_schedules')
-        .insert([{
-          title: scheduleForm.title,
-          description: scheduleForm.description || null,
-          scheduled_date: scheduleForm.scheduled_date,
-          priority: scheduleForm.priority,
-          sector_id: selectedSector,
-          arduino_module_id: scheduleForm.arduino_module_id || null,
-          status: 'pending'
-        }]);
-
-      if (error) {
-        console.error('Error creating schedule:', error);
-        return;
-      }
-    }
-
+    // Temporariamente comentado - será implementado com o novo backend
+    console.log('Save schedule - será implementado');
     setShowModal(false);
     setEditingSchedule(null);
     setScheduleForm({
@@ -192,50 +109,34 @@ export const MaintenanceSchedule: React.FC = () => {
       priority: 'medium',
       arduino_module_id: ''
     });
-    loadSchedules();
   };
 
   const handleDeleteSchedule = async (id: string) => {
-    if (!confirm('Tem certeza que deseja excluir esta manutenção?')) return;
-
-    const { error } = await supabase
-      .from('maintenance_schedules')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      console.error('Error deleting schedule:', error);
-      return;
-    }
-
-    loadSchedules();
+    // Temporariamente comentado - será implementado com o novo backend
+    console.log('Delete schedule - será implementado', id);
   };
 
   const handleCompleteSchedule = async (id: string) => {
-    const { error } = await supabase
-      .from('maintenance_schedules')
-      .update({
-        status: 'completed',
-        completed_date: new Date().toISOString()
-      })
-      .eq('id', id);
-
-    if (error) {
-      console.error('Error completing schedule:', error);
-      return;
-    }
-
-    loadSchedules();
+    // Temporariamente comentado - será implementado com o novo backend
+    console.log('Complete schedule - será implementado', id);
   };
 
-  const openEditSchedule = (schedule: MaintenanceSchedule) => {
+  const openEditSchedule = (schedule: MaintenanceScheduleType) => {
     setEditingSchedule(schedule);
+
+    // Extrai o ID do arduino_module_id, seja ele string, objeto ou undefined
+    const moduleId = schedule.arduino_module_id
+      ? (typeof schedule.arduino_module_id === 'string'
+          ? schedule.arduino_module_id
+          : schedule.arduino_module_id._id)
+      : '';
+
     setScheduleForm({
       title: schedule.title,
       description: schedule.description || '',
       scheduled_date: schedule.scheduled_date.split('T')[0],
       priority: schedule.priority,
-      arduino_module_id: schedule.arduino_module_id || ''
+      arduino_module_id: moduleId
     });
     setShowModal(true);
   };
@@ -306,16 +207,28 @@ export const MaintenanceSchedule: React.FC = () => {
   };
 
   const getSectorEnvironment = (sectorId: string) => {
-    const sector = sectors.find(s => s.id === sectorId);
+    const sector = sectors.find(s => s._id === sectorId);
     if (!sector) return '';
-    const env = environments.find(e => e.id === sector.environment_id);
+    const environmentId = typeof sector.environment_id === 'string' ? sector.environment_id : sector.environment_id._id;
+    const env = environments.find(e => e._id === environmentId);
     return env ? `${env.name} - ${sector.name}` : sector.name;
   };
 
-  const getModuleName = (moduleId: string | null) => {
+  const getModuleName = (moduleId: string | ArduinoModule | undefined | null) => {
     if (!moduleId) return 'Geral';
-    const module = modules.find(m => m.id === moduleId);
-    return module ? module.name : 'Módulo não encontrado';
+
+    // Se moduleId é um objeto ArduinoModule, retorna o nome diretamente
+    if (typeof moduleId === 'object' && moduleId !== null) {
+      return moduleId.name;
+    }
+
+    // Se moduleId é uma string, procura o módulo na lista
+    if (typeof moduleId === 'string') {
+      const module = modules.find(m => m._id === moduleId);
+      return module ? module.name : 'Módulo não encontrado';
+    }
+
+    return 'Geral';
   };
 
   const getNextMaintenanceSuggestion = () => {
@@ -398,8 +311,8 @@ export const MaintenanceSchedule: React.FC = () => {
               >
                 <option value="">Selecione um setor</option>
                 {sectors.map((sector) => (
-                  <option key={sector.id} value={sector.id}>
-                    {getSectorEnvironment(sector.id)}
+                  <option key={sector._id} value={sector._id}>
+                    {getSectorEnvironment(sector._id)}
                   </option>
                 ))}
               </select>
@@ -433,7 +346,7 @@ export const MaintenanceSchedule: React.FC = () => {
             <div className="space-y-4">
               {schedules.map((schedule) => (
                 <div
-                  key={schedule.id}
+                  key={schedule._id}
                   className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition"
                 >
                   <div className="flex items-start justify-between mb-2">
@@ -471,7 +384,7 @@ export const MaintenanceSchedule: React.FC = () => {
                   <div className="flex gap-2">
                     {schedule.status !== 'completed' && (
                       <button
-                        onClick={() => handleCompleteSchedule(schedule.id)}
+                        onClick={() => handleCompleteSchedule(schedule._id)}
                         className="flex items-center gap-1 text-sm bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 transition"
                       >
                         <CheckCircle size={16} />
@@ -485,7 +398,7 @@ export const MaintenanceSchedule: React.FC = () => {
                       <Edit2 size={18} />
                     </button>
                     <button
-                      onClick={() => handleDeleteSchedule(schedule.id)}
+                      onClick={() => handleDeleteSchedule(schedule._id)}
                       className="text-red-600 hover:text-red-700 p-1"
                     >
                       <Trash2 size={18} />
@@ -565,7 +478,7 @@ export const MaintenanceSchedule: React.FC = () => {
                 >
                   <option value="">Manutenção geral</option>
                   {modules.map((module) => (
-                    <option key={module.id} value={module.id}>
+                    <option key={module._id} value={module._id}>
                       {module.name}
                     </option>
                   ))}
