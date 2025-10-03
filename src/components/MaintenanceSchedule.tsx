@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Calendar, CheckCircle, Clock, AlertTriangle } from 'lucide-react';
+import { Plus, CreditCard as Edit2, Trash2, Calendar, CheckCircle, Clock, AlertTriangle } from 'lucide-react';
 import { supabase } from '../services/authService';
 
 interface MaintenanceSchedule {
