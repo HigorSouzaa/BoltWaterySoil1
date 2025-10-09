@@ -305,18 +305,6 @@ export const ArduinoModules: React.FC = () => {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Nome do Módulo
-                </label>
-                <input
-                  type="text"
-                  value={moduleForm.name}
-                  onChange={(e) => setModuleForm({ ...moduleForm, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Ex: Arduino 01"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Tipo de Módulo
                 </label>
                 <select
@@ -325,9 +313,30 @@ export const ArduinoModules: React.FC = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="sensor">Sensor</option>
-                  <option value="actuator">Atuador</option>
+                  {/* Trabalhar somente com sensor por enquanto */}
+                  {/* <option value="actuator">Atuador</option>
                   <option value="controller">Controlador</option>
-                  <option value="monitor">Monitor</option>
+                  <option value="monitor">Monitor</option> */}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nome do Módulo
+                </label>
+                <select
+                  value={moduleForm.name}
+                  onChange={(e) => setModuleForm({ ...moduleForm, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">Selecione um nome</option>
+                  {moduleForm.module_type === 'sensor' && (
+                    <>
+                      <option value="Umidade do Solo">Sensor de Umidade do Solo</option>
+                      <option value="Temperatura">Sensor de Temperatura</option>
+                      <option value="Nutrientes NPK">Sensor de Nutrientes NPK</option>
+                      <option value="pH do Solo">Sensor de pH do Solo</option>
+                    </>
+                  )}
                 </select>
               </div>
               <div>
