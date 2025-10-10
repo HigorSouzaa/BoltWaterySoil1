@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   User,
   Bell,
@@ -18,9 +18,10 @@ import {
   AlertCircle,
   CheckCircle,
   Settings,
-  Camera
-} from 'lucide-react';
+  Camera,
+} from "lucide-react";
 // UserSettings será implementado posteriormente - por enquanto removendo dependência do Supabase
+import { userService } from "../services/userService";
 
 interface UserPreferences {
   user_id: string;
@@ -55,117 +56,117 @@ interface PasswordForm {
 }
 
 export const UserSettings: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'profile' | 'security' | 'preferences' | 'notifications'>('profile');
+  const [activeTab, setActiveTab] = useState<
+    "profile" | "security" | "preferences" | "notifications"
+  >("profile");
   const [preferences, setPreferences] = useState<UserPreferences>({
-    user_id: '',
-    theme: 'light',
+    user_id: "",
+    theme: "light",
     notifications_enabled: true,
-    language: 'pt-BR',
-    settings: {}
+    language: "pt-BR",
+    settings: {},
   });
 
   const [userProfile, setUserProfile] = useState<UserProfile>({
-    name: '',
-    email: '',
-    phone: '',
-    address: '',
-    birthDate: '',
-    company: '',
-    position: '',
-    avatar: ''
+    name: "",
+    email: "",
+    phone: "",
+    address: "",
+    birthDate: "",
+    company: "",
+    position: "",
+    avatar: "",
   });
 
   const [securitySettings, setSecuritySettings] = useState<SecuritySettings>({
     twoFactorEnabled: false,
     loginNotifications: true,
     sessionTimeout: 30,
-    allowedIPs: []
+    allowedIPs: [],
   });
 
   const [passwordForm, setPasswordForm] = useState<PasswordForm>({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: ''
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
   });
 
   const [showPasswords, setShowPasswords] = useState({
     current: false,
     new: false,
-    confirm: false
+    confirm: false,
   });
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState('');
-  const [messageType, setMessageType] = useState<'success' | 'error'>('success');
+  const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState<"success" | "error">(
+    "success"
+  );
 
   useEffect(() => {
     loadUserData();
   }, []);
 
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setSelectedFile(e.target.files[0]);
+
+      // Preview da imagem
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          setUserProfile({
+            ...userProfile,
+            avatar: event.target.result as string,
+          });
+        }
+      };
+      reader.readAsDataURL(e.target.files[0]);
+    }
+  };
+
   const loadUserData = async () => {
     try {
-      // Carregar dados do usuário do localStorage
-      const user = localStorage.getItem('user');
-      if (user) {
-        const userData = JSON.parse(user);
-        setUserProfile(prev => ({
-          ...prev,
-          name: userData.name || '',
-          email: userData.email || '',
-          phone: userData.phone || '',
-          address: userData.address || '',
-          birthDate: userData.birthDate || '',
-          company: userData.company || '',
-          position: userData.position || '',
-          avatar: userData.avatar || ''
-        }));
-      }
-
-      // Carregar preferências do localStorage ou usar padrões
-      const savedPrefs = localStorage.getItem('userPreferences');
-      if (savedPrefs) {
-        const prefs = JSON.parse(savedPrefs);
-        setPreferences(prefs);
-      } else {
-        setPreferences(prev => ({
-          ...prev,
-          user_id: 'current_user',
-          theme: 'light',
-          notifications_enabled: true,
-          language: 'pt-BR'
-        }));
-      }
-
-      // Carregar configurações de segurança
-      const savedSecurity = localStorage.getItem('securitySettings');
-      if (savedSecurity) {
-        const security = JSON.parse(savedSecurity);
-        setSecuritySettings(security);
-      }
-
+      const data = await userService.getProfile();
+      setUserProfile(data.user);
     } catch (error) {
-      console.error('Error loading user data:', error);
+      console.error("Error loading user data:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const showMessage = (msg: string, type: 'success' | 'error' = 'success') => {
+  const showMessage = (msg: string, type: "success" | "error" = "success") => {
     setMessage(msg);
     setMessageType(type);
-    setTimeout(() => setMessage(''), 5000);
+    setTimeout(() => setMessage(""), 5000);
   };
 
+  //
+
+  //
   const handleSaveProfile = async () => {
     setSaving(true);
     try {
-      // Salvar perfil no localStorage
-      localStorage.setItem('user', JSON.stringify(userProfile));
-      showMessage('Perfil atualizado com sucesso!');
-    } catch (error) {
-      console.error('Error saving profile:', error);
-      showMessage('Erro ao salvar perfil', 'error');
+      const data = await userService.updateProfile(
+        {
+          name: userProfile.name,
+          phone: userProfile.phone,
+          address: userProfile.address,
+          birthDate: userProfile.birthDate,
+          company: userProfile.company,
+          position: userProfile.position,
+        },
+        selectedFile || undefined
+      );
+
+      setUserProfile(data.user);
+      showMessage("Perfil atualizado com sucesso!");
+    } catch (error: any) {
+      showMessage(error.message || "Erro ao salvar perfil", "error");
     } finally {
       setSaving(false);
     }
@@ -174,24 +175,42 @@ export const UserSettings: React.FC = () => {
   const handleSavePreferences = async () => {
     setSaving(true);
     try {
-      localStorage.setItem('userPreferences', JSON.stringify(preferences));
-      showMessage('Preferências salvas com sucesso!');
+      localStorage.setItem("userPreferences", JSON.stringify(preferences));
+      showMessage("Preferências salvas com sucesso!");
     } catch (error) {
-      console.error('Error saving preferences:', error);
-      showMessage('Erro ao salvar preferências', 'error');
+      console.error("Error saving preferences:", error);
+      showMessage("Erro ao salvar preferências", "error");
     } finally {
       setSaving(false);
     }
   };
 
+  const getFirstAndLastName = (fullName: string) => {
+    if (!fullName) return "";
+
+    const nameParts = fullName.trim().split(" ");
+
+    if (nameParts.length === 1) {
+      return nameParts[0]; // Se só tem um nome, retorna ele
+    }
+
+    const firstName = nameParts[0];
+    const lastName = nameParts[nameParts.length - 1]; // Pega o último elemento
+
+    return `${firstName} ${lastName}`;
+  };
+
   const handleSaveSecurity = async () => {
     setSaving(true);
     try {
-      localStorage.setItem('securitySettings', JSON.stringify(securitySettings));
-      showMessage('Configurações de segurança salvas com sucesso!');
+      localStorage.setItem(
+        "securitySettings",
+        JSON.stringify(securitySettings)
+      );
+      showMessage("Configurações de segurança salvas com sucesso!");
     } catch (error) {
-      console.error('Error saving security settings:', error);
-      showMessage('Erro ao salvar configurações de segurança', 'error');
+      console.error("Error saving security settings:", error);
+      showMessage("Erro ao salvar configurações de segurança", "error");
     } finally {
       setSaving(false);
     }
@@ -199,36 +218,31 @@ export const UserSettings: React.FC = () => {
 
   const handleChangePassword = async () => {
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      showMessage('As senhas não coincidem', 'error');
+      showMessage("As senhas não coincidem", "error");
       return;
     }
 
     if (passwordForm.newPassword.length < 8) {
-      showMessage('A nova senha deve ter pelo menos 8 caracteres', 'error');
-      return;
-    }
-
-    if (!passwordForm.currentPassword) {
-      showMessage('Digite sua senha atual', 'error');
+      showMessage("A nova senha deve ter pelo menos 8 caracteres", "error");
       return;
     }
 
     setSaving(true);
     try {
-      // Aqui você faria a chamada para a API para alterar a senha
-      // Por enquanto, vamos simular o sucesso
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await userService.changePassword(
+        passwordForm.currentPassword,
+        passwordForm.newPassword
+      );
 
       setPasswordForm({
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: ''
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
       });
 
-      showMessage('Senha alterada com sucesso!');
-    } catch (error) {
-      console.error('Error changing password:', error);
-      showMessage('Erro ao alterar senha', 'error');
+      showMessage("Senha alterada com sucesso!");
+    } catch (error: any) {
+      showMessage(error.message || "Erro ao alterar senha", "error");
     } finally {
       setSaving(false);
     }
@@ -257,10 +271,10 @@ export const UserSettings: React.FC = () => {
         <div className="border-b border-gray-200">
           <nav className="flex space-x-8 px-6">
             {[
-              { id: 'profile', label: 'Perfil', icon: User },
-              { id: 'security', label: 'Segurança', icon: Shield },
-              { id: 'preferences', label: 'Preferências', icon: Palette },
-              { id: 'notifications', label: 'Notificações', icon: Bell }
+              { id: "profile", label: "Perfil", icon: User },
+              { id: "security", label: "Segurança", icon: Shield },
+              { id: "preferences", label: "Preferências", icon: Palette },
+              { id: "notifications", label: "Notificações", icon: Bell },
             ].map((tab) => {
               const Icon = tab.icon;
               return (
@@ -269,8 +283,8 @@ export const UserSettings: React.FC = () => {
                   onClick={() => setActiveTab(tab.id as any)}
                   className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors ${
                     activeTab === tab.id
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      ? "border-blue-500 text-blue-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
                   }`}
                 >
                   <Icon size={16} />
@@ -284,22 +298,59 @@ export const UserSettings: React.FC = () => {
         {/* Tab Content */}
         <div className="p-6">
           {/* Profile Tab */}
-          {activeTab === 'profile' && (
+          {activeTab === "profile" && (
             <div className="space-y-6">
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Avatar Section */}
-                <div className="lg:col-span-1">
-                  <div className="bg-gray-50 rounded-lg p-6 text-center">
+                <div className="lg: col-span-1">
+                  <div className="bg-gray-50 rounded-lg p-6 text-center h-full flex flex-col justify-center">
                     <div className="relative inline-block">
-                      <div className="w-32 h-32 bg-gradient-to-br from-blue-500 to-green-500 rounded-full flex items-center justify-center text-white text-4xl font-bold mx-auto mb-4">
-                        {userProfile.name ? userProfile.name.charAt(0).toUpperCase() : 'U'}
+                      <div className="w-52 h-52 bg-gradient-to-br from-blue-500 to-green-500 rounded-full flex items-center justify-center text-white text-4xl font-bold mx-auto mb-4">
+                        {userProfile.avatar ? (
+                          <img
+                            src={
+                              userProfile.avatar.startsWith("http")
+                                ? userProfile.avatar
+                                : `http://localhost:3000${userProfile.avatar}`
+                            }
+                            alt="Avatar"
+                            className="w-full h-full rounded-full object-cover"
+                          />
+                        ) : userProfile.name ? (
+                          userProfile.name.charAt(0).toUpperCase()
+                        ) : (
+                          "U"
+                        )}
                       </div>
-                      <button className="absolute bottom-0 right-0 bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 transition-colors">
-                        <Camera size={16} />
-                      </button>
+                      <input
+                        type="file"
+                        id="avatar-upload"
+                        accept="image/*"
+                        onChange={handleFileChange}
+                        className="hidden"
+                      />
+                      <label htmlFor="avatar-upload">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            document.getElementById("avatar-upload")?.click()
+                          }
+                          className="absolute bottom-0 right-14 bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 transition-colors"
+                        >
+                          <Camera size={32} />
+                        </button>
+                      </label>
                     </div>
-                    <h3 className="text-lg font-semibold text-gray-900">{userProfile.name || 'Nome do Usuário'}</h3>
-                    <p className="text-gray-600">{userProfile.position || 'Cargo'}</p>
+                    <h3 className="text-2xl font-semibold text-gray-900 mt-5">
+                      {userProfile.name
+                        ? (() => {
+                            const parts = userProfile.name.trim().split(" ");
+                            return parts.length > 1
+                              ? `${parts[0]} ${parts[parts.length - 1]}`
+                              : parts[0];
+                          })()
+                        : "Nome do Usuário"}
+                    </h3>
                   </div>
                 </div>
 
@@ -314,7 +365,12 @@ export const UserSettings: React.FC = () => {
                       <input
                         type="text"
                         value={userProfile.name}
-                        onChange={(e) => setUserProfile({ ...userProfile, name: e.target.value })}
+                        onChange={(e) =>
+                          setUserProfile({
+                            ...userProfile,
+                            name: e.target.value,
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         placeholder="Seu nome completo"
                       />
@@ -328,7 +384,12 @@ export const UserSettings: React.FC = () => {
                       <input
                         type="email"
                         value={userProfile.email}
-                        onChange={(e) => setUserProfile({ ...userProfile, email: e.target.value })}
+                        onChange={(e) =>
+                          setUserProfile({
+                            ...userProfile,
+                            email: e.target.value,
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         placeholder="seu@email.com"
                       />
@@ -342,7 +403,12 @@ export const UserSettings: React.FC = () => {
                       <input
                         type="tel"
                         value={userProfile.phone}
-                        onChange={(e) => setUserProfile({ ...userProfile, phone: e.target.value })}
+                        onChange={(e) =>
+                          setUserProfile({
+                            ...userProfile,
+                            phone: e.target.value,
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         placeholder="(11) 99999-9999"
                       />
@@ -356,7 +422,12 @@ export const UserSettings: React.FC = () => {
                       <input
                         type="date"
                         value={userProfile.birthDate}
-                        onChange={(e) => setUserProfile({ ...userProfile, birthDate: e.target.value })}
+                        onChange={(e) =>
+                          setUserProfile({
+                            ...userProfile,
+                            birthDate: e.target.value,
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
                     </div>
@@ -369,7 +440,12 @@ export const UserSettings: React.FC = () => {
                       <input
                         type="text"
                         value={userProfile.address}
-                        onChange={(e) => setUserProfile({ ...userProfile, address: e.target.value })}
+                        onChange={(e) =>
+                          setUserProfile({
+                            ...userProfile,
+                            address: e.target.value,
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         placeholder="Seu endereço completo"
                       />
@@ -382,7 +458,12 @@ export const UserSettings: React.FC = () => {
                       <input
                         type="text"
                         value={userProfile.company}
-                        onChange={(e) => setUserProfile({ ...userProfile, company: e.target.value })}
+                        onChange={(e) =>
+                          setUserProfile({
+                            ...userProfile,
+                            company: e.target.value,
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         placeholder="Nome da empresa"
                       />
@@ -395,7 +476,12 @@ export const UserSettings: React.FC = () => {
                       <input
                         type="text"
                         value={userProfile.position}
-                        onChange={(e) => setUserProfile({ ...userProfile, position: e.target.value })}
+                        onChange={(e) =>
+                          setUserProfile({
+                            ...userProfile,
+                            position: e.target.value,
+                          })
+                        }
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         placeholder="Seu cargo"
                       />
@@ -409,7 +495,7 @@ export const UserSettings: React.FC = () => {
                       className="flex items-center gap-2 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
                     >
                       <Save size={16} />
-                      {saving ? 'Salvando...' : 'Salvar Perfil'}
+                      {saving ? "Salvando..." : "Salvar Perfil"}
                     </button>
                   </div>
                 </div>
@@ -418,7 +504,7 @@ export const UserSettings: React.FC = () => {
           )}
 
           {/* Security Tab */}
-          {activeTab === 'security' && (
+          {activeTab === "security" && (
             <div className="space-y-6">
               {/* Change Password */}
               <div className="bg-gray-50 rounded-lg p-6">
@@ -433,18 +519,32 @@ export const UserSettings: React.FC = () => {
                     </label>
                     <div className="relative">
                       <input
-                        type={showPasswords.current ? 'text' : 'password'}
+                        type={showPasswords.current ? "text" : "password"}
                         value={passwordForm.currentPassword}
-                        onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                        onChange={(e) =>
+                          setPasswordForm({
+                            ...passwordForm,
+                            currentPassword: e.target.value,
+                          })
+                        }
                         className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         placeholder="Digite sua senha atual"
                       />
                       <button
                         type="button"
-                        onClick={() => setShowPasswords({ ...showPasswords, current: !showPasswords.current })}
+                        onClick={() =>
+                          setShowPasswords({
+                            ...showPasswords,
+                            current: !showPasswords.current,
+                          })
+                        }
                         className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
                       >
-                        {showPasswords.current ? <EyeOff size={16} /> : <Eye size={16} />}
+                        {showPasswords.current ? (
+                          <EyeOff size={16} />
+                        ) : (
+                          <Eye size={16} />
+                        )}
                       </button>
                     </div>
                   </div>
@@ -455,18 +555,32 @@ export const UserSettings: React.FC = () => {
                     </label>
                     <div className="relative">
                       <input
-                        type={showPasswords.new ? 'text' : 'password'}
+                        type={showPasswords.new ? "text" : "password"}
                         value={passwordForm.newPassword}
-                        onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                        onChange={(e) =>
+                          setPasswordForm({
+                            ...passwordForm,
+                            newPassword: e.target.value,
+                          })
+                        }
                         className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         placeholder="Digite a nova senha"
                       />
                       <button
                         type="button"
-                        onClick={() => setShowPasswords({ ...showPasswords, new: !showPasswords.new })}
+                        onClick={() =>
+                          setShowPasswords({
+                            ...showPasswords,
+                            new: !showPasswords.new,
+                          })
+                        }
                         className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
                       >
-                        {showPasswords.new ? <EyeOff size={16} /> : <Eye size={16} />}
+                        {showPasswords.new ? (
+                          <EyeOff size={16} />
+                        ) : (
+                          <Eye size={16} />
+                        )}
                       </button>
                     </div>
                   </div>
@@ -477,18 +591,32 @@ export const UserSettings: React.FC = () => {
                     </label>
                     <div className="relative">
                       <input
-                        type={showPasswords.confirm ? 'text' : 'password'}
+                        type={showPasswords.confirm ? "text" : "password"}
                         value={passwordForm.confirmPassword}
-                        onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                        onChange={(e) =>
+                          setPasswordForm({
+                            ...passwordForm,
+                            confirmPassword: e.target.value,
+                          })
+                        }
                         className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         placeholder="Confirme a nova senha"
                       />
                       <button
                         type="button"
-                        onClick={() => setShowPasswords({ ...showPasswords, confirm: !showPasswords.confirm })}
+                        onClick={() =>
+                          setShowPasswords({
+                            ...showPasswords,
+                            confirm: !showPasswords.confirm,
+                          })
+                        }
                         className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
                       >
-                        {showPasswords.confirm ? <EyeOff size={16} /> : <Eye size={16} />}
+                        {showPasswords.confirm ? (
+                          <EyeOff size={16} />
+                        ) : (
+                          <Eye size={16} />
+                        )}
                       </button>
                     </div>
                   </div>
@@ -497,11 +625,16 @@ export const UserSettings: React.FC = () => {
                 <div className="mt-4 flex justify-end">
                   <button
                     onClick={handleChangePassword}
-                    disabled={saving || !passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword}
+                    disabled={
+                      saving ||
+                      !passwordForm.currentPassword ||
+                      !passwordForm.newPassword ||
+                      !passwordForm.confirmPassword
+                    }
                     className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
                   >
                     <Key size={16} />
-                    {saving ? 'Alterando...' : 'Alterar Senha'}
+                    {saving ? "Alterando..." : "Alterar Senha"}
                   </button>
                 </div>
               </div>
@@ -515,13 +648,20 @@ export const UserSettings: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-medium text-gray-800">Ativar 2FA</p>
-                    <p className="text-sm text-gray-600">Adicione uma camada extra de segurança à sua conta</p>
+                    <p className="text-sm text-gray-600">
+                      Adicione uma camada extra de segurança à sua conta
+                    </p>
                   </div>
                   <label className="relative inline-flex items-center cursor-pointer">
                     <input
                       type="checkbox"
                       checked={securitySettings.twoFactorEnabled}
-                      onChange={(e) => setSecuritySettings({ ...securitySettings, twoFactorEnabled: e.target.checked })}
+                      onChange={(e) =>
+                        setSecuritySettings({
+                          ...securitySettings,
+                          twoFactorEnabled: e.target.checked,
+                        })
+                      }
                       className="sr-only peer"
                     />
                     <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
@@ -538,14 +678,23 @@ export const UserSettings: React.FC = () => {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-medium text-gray-800">Notificar sobre novos logins</p>
-                      <p className="text-sm text-gray-600">Receba um email quando alguém fizer login na sua conta</p>
+                      <p className="font-medium text-gray-800">
+                        Notificar sobre novos logins
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        Receba um email quando alguém fizer login na sua conta
+                      </p>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
                       <input
                         type="checkbox"
                         checked={securitySettings.loginNotifications}
-                        onChange={(e) => setSecuritySettings({ ...securitySettings, loginNotifications: e.target.checked })}
+                        onChange={(e) =>
+                          setSecuritySettings({
+                            ...securitySettings,
+                            loginNotifications: e.target.checked,
+                          })
+                        }
                         className="sr-only peer"
                       />
                       <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
@@ -558,7 +707,12 @@ export const UserSettings: React.FC = () => {
                     </label>
                     <select
                       value={securitySettings.sessionTimeout}
-                      onChange={(e) => setSecuritySettings({ ...securitySettings, sessionTimeout: parseInt(e.target.value) })}
+                      onChange={(e) =>
+                        setSecuritySettings({
+                          ...securitySettings,
+                          sessionTimeout: parseInt(e.target.value),
+                        })
+                      }
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                       <option value={15}>15 minutos</option>
@@ -577,7 +731,7 @@ export const UserSettings: React.FC = () => {
                     className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
                   >
                     <Save size={16} />
-                    {saving ? 'Salvando...' : 'Salvar Segurança'}
+                    {saving ? "Salvando..." : "Salvar Segurança"}
                   </button>
                 </div>
               </div>
@@ -585,7 +739,7 @@ export const UserSettings: React.FC = () => {
           )}
 
           {/* Preferences Tab */}
-          {activeTab === 'preferences' && (
+          {activeTab === "preferences" && (
             <div className="space-y-6">
               <div className="bg-gray-50 rounded-lg p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -598,7 +752,9 @@ export const UserSettings: React.FC = () => {
                   </label>
                   <select
                     value={preferences.theme}
-                    onChange={(e) => setPreferences({ ...preferences, theme: e.target.value })}
+                    onChange={(e) =>
+                      setPreferences({ ...preferences, theme: e.target.value })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="light">Claro</option>
@@ -619,7 +775,12 @@ export const UserSettings: React.FC = () => {
                   </label>
                   <select
                     value={preferences.language}
-                    onChange={(e) => setPreferences({ ...preferences, language: e.target.value })}
+                    onChange={(e) =>
+                      setPreferences({
+                        ...preferences,
+                        language: e.target.value,
+                      })
+                    }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="pt-BR">Português (Brasil)</option>
@@ -636,14 +797,14 @@ export const UserSettings: React.FC = () => {
                   className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
                   <Save size={16} />
-                  {saving ? 'Salvando...' : 'Salvar Preferências'}
+                  {saving ? "Salvando..." : "Salvar Preferências"}
                 </button>
               </div>
             </div>
           )}
 
           {/* Notifications Tab */}
-          {activeTab === 'notifications' && (
+          {activeTab === "notifications" && (
             <div className="space-y-6">
               <div className="bg-gray-50 rounded-lg p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
@@ -653,14 +814,23 @@ export const UserSettings: React.FC = () => {
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-medium text-gray-800">Notificações Gerais</p>
-                      <p className="text-sm text-gray-600">Receba alertas sobre manutenção e status dos módulos</p>
+                      <p className="font-medium text-gray-800">
+                        Notificações Gerais
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        Receba alertas sobre manutenção e status dos módulos
+                      </p>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
                       <input
                         type="checkbox"
                         checked={preferences.notifications_enabled}
-                        onChange={(e) => setPreferences({ ...preferences, notifications_enabled: e.target.checked })}
+                        onChange={(e) =>
+                          setPreferences({
+                            ...preferences,
+                            notifications_enabled: e.target.checked,
+                          })
+                        }
                         className="sr-only peer"
                       />
                       <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
@@ -668,17 +838,40 @@ export const UserSettings: React.FC = () => {
                   </div>
 
                   <div className="border-t pt-4">
-                    <h4 className="font-medium text-gray-800 mb-3">Tipos de Notificação</h4>
+                    <h4 className="font-medium text-gray-800 mb-3">
+                      Tipos de Notificação
+                    </h4>
                     <div className="space-y-3">
                       {[
-                        { key: 'maintenance', label: 'Alertas de Manutenção', desc: 'Notificações sobre manutenções programadas e atrasadas' },
-                        { key: 'sensors', label: 'Alertas de Sensores', desc: 'Notificações quando sensores detectam valores anômalos' },
-                        { key: 'system', label: 'Alertas do Sistema', desc: 'Notificações sobre status do sistema e módulos offline' },
-                        { key: 'reports', label: 'Relatórios', desc: 'Receba relatórios periódicos por email' }
+                        {
+                          key: "maintenance",
+                          label: "Alertas de Manutenção",
+                          desc: "Notificações sobre manutenções programadas e atrasadas",
+                        },
+                        {
+                          key: "sensors",
+                          label: "Alertas de Sensores",
+                          desc: "Notificações quando sensores detectam valores anômalos",
+                        },
+                        {
+                          key: "system",
+                          label: "Alertas do Sistema",
+                          desc: "Notificações sobre status do sistema e módulos offline",
+                        },
+                        {
+                          key: "reports",
+                          label: "Relatórios",
+                          desc: "Receba relatórios periódicos por email",
+                        },
                       ].map((item) => (
-                        <div key={item.key} className="flex items-center justify-between">
+                        <div
+                          key={item.key}
+                          className="flex items-center justify-between"
+                        >
                           <div>
-                            <p className="font-medium text-gray-700">{item.label}</p>
+                            <p className="font-medium text-gray-700">
+                              {item.label}
+                            </p>
                             <p className="text-sm text-gray-500">{item.desc}</p>
                           </div>
                           <label className="relative inline-flex items-center cursor-pointer">
@@ -702,7 +895,7 @@ export const UserSettings: React.FC = () => {
                     className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
                   >
                     <Save size={16} />
-                    {saving ? 'Salvando...' : 'Salvar Notificações'}
+                    {saving ? "Salvando..." : "Salvar Notificações"}
                   </button>
                 </div>
               </div>
@@ -711,12 +904,18 @@ export const UserSettings: React.FC = () => {
 
           {/* Message Display */}
           {message && (
-            <div className={`mt-6 p-4 rounded-lg flex items-center gap-2 ${
-              messageType === 'error'
-                ? 'bg-red-100 text-red-700 border border-red-200'
-                : 'bg-green-100 text-green-700 border border-green-200'
-            }`}>
-              {messageType === 'error' ? <AlertCircle size={16} /> : <CheckCircle size={16} />}
+            <div
+              className={`mt-6 p-4 rounded-lg flex items-center gap-2 ${
+                messageType === "error"
+                  ? "bg-red-100 text-red-700 border border-red-200"
+                  : "bg-green-100 text-green-700 border border-green-200"
+              }`}
+            >
+              {messageType === "error" ? (
+                <AlertCircle size={16} />
+              ) : (
+                <CheckCircle size={16} />
+              )}
               {message}
             </div>
           )}
