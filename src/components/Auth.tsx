@@ -19,7 +19,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onBackToLanding }) => {
   // Limpar erro quando trocar de modo (login/registro)
   useEffect(() => {
     clearError();
-  }, [isLogin, clearError]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLogin]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

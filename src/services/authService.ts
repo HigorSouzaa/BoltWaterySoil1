@@ -5,11 +5,11 @@ class AuthService {
 
   constructor() {
     // Para Vite usar import.meta.env ao invés de process.env
-    this.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+    this.baseURL = 'http://localhost:3000/api/v1';
   }
 
   async register(userData: RegisterData): Promise<AuthResponse> {
-    const response = await fetch(`${this.baseURL}/api/v1/users/register`, {
+    const response = await fetch(`${this.baseURL}/users/register`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -27,7 +27,7 @@ class AuthService {
   }
 
   async login(userData: LoginData): Promise<AuthResponse> {
-    const response = await fetch(`${this.baseURL}/api/v1/users/login`, {
+    const response = await fetch(`${this.baseURL}/users/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

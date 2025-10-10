@@ -1,11 +1,12 @@
 // userService.ts
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
 
 class UserService {
   private getAuthHeaders(): HeadersInit {
     const token = localStorage.getItem('token');
     return {
-      'Authorization': `Bearer ${token}`
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
     };
   }
 
@@ -54,7 +55,9 @@ class UserService {
 
       const response = await fetch(`${API_BASE_URL}/users/profile`, {
         method: 'PUT',
-        headers: this.getAuthHeaders(),
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
         body: formData
       });
 
@@ -84,7 +87,9 @@ class UserService {
 
       const response = await fetch(`${API_BASE_URL}/users/avatar`, {
         method: 'POST',
-        headers: this.getAuthHeaders(),
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
         body: formData
       });
 
