@@ -21,6 +21,8 @@ app.use("/api/v1/environments", environmentRoutes);
 app.use("/api/v1/sectors", sectorRoutes);
 app.use("/api/v1/arduino-modules", arduinoModuleRoutes);
 app.use("/api/v1/maintenance-schedules", maintenanceScheduleRoutes);
+// Serve arquivos estáticos da pasta uploads
+app.use('/uploads', express.static('uploads'));
 
 // Rota de status dos serviços
 app.get("/", (req, res) => res.send("API rodando!!"));

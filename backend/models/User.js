@@ -1,14 +1,45 @@
-const mongoose = require("mongoose");
+const mongoose = require('mongoose');
 
-/**
- * Schema do usuário.
- * Cada campo é documentado inline para facilitar entendimento e manutenção.
- */
-const UserSchema = new mongoose.Schema({
-  name: { type: String, required: true },                 // Nome completo do usuário
-  email: { type: String, required: true, unique: true },  // E-mail único, usado para login
-  password: { type: String, required: true },             // Senha hash (NUNCA armazenar senha em texto puro)
+const userSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: true
+  },
+  email: {
+    type: String,
+    required: true,
+    unique: true
+  },
+  password: {
+    type: String,
+    required: true
+  },
+  phone: {
+    type: String,
+    default: ''
+  },
+  address: {
+    type: String,
+    default: ''
+  },
+  birthDate: {
+    type: String,
+    default: ''
+  },
+  company: {
+    type: String,
+    default: ''
+  },
+  position: {
+    type: String,
+    default: ''
+  },
+  avatar: {
+    type: String,
+    default: ''
+  }
+}, {
+  timestamps: true
 });
 
-// Exporta o modelo para uso nos controladores
-module.exports = mongoose.model("User", UserSchema);
+module.exports = mongoose.model('User', userSchema);
