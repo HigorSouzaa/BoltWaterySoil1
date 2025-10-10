@@ -147,6 +147,20 @@ export const UserSettings: React.FC = () => {
     }
   };
 
+  // No componente onde carrega o perfil
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const data = await userService.getProfile();
+        console.log("Avatar recebido:", data.user.avatar?.substring(0, 50)); // Mostra início da string
+        setUserProfile(data.user);
+      } catch (error) {
+        console.error(error);
+      }
+    };
+    loadProfile();
+  }, []);
+
   const showMessage = (msg: string, type: "success" | "error" = "success") => {
     setMessage(msg);
     setMessageType(type);
@@ -173,17 +187,20 @@ export const UserSettings: React.FC = () => {
 
       // Atualiza o perfil com os dados do servidor
       setUserProfile(data.user);
-      
+
       // Limpa estados relacionados ao arquivo
       if (previewUrl) {
         URL.revokeObjectURL(previewUrl);
         setPreviewUrl(null);
       }
       setSelectedFile(null);
-      
+
       showMessage("Perfil atualizado com sucesso!");
     } catch (error) {
-      showMessage(error instanceof Error ? error.message : "Erro ao salvar perfil", "error");
+      showMessage(
+        error instanceof Error ? error.message : "Erro ao salvar perfil",
+        "error"
+      );
     } finally {
       setSaving(false);
     }
@@ -318,18 +335,25 @@ export const UserSettings: React.FC = () => {
                     <div className="relative inline-block">
                       <div className="relative w-52 h-52 rounded-full overflow-hidden mx-auto mb-4">
                         <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-green-500 flex items-center justify-center text-white text-4xl font-bold">
-                          {!previewUrl && !userProfile.avatar && (userProfile.name ? userProfile.name.charAt(0).toUpperCase() : "U")}
+                          {!previewUrl &&
+                            !userProfile.avatar &&
+                            (userProfile.name
+                              ? userProfile.name.charAt(0).toUpperCase()
+                              : "U")}
                         </div>
                         {(previewUrl || userProfile.avatar) && (
                           <img
-                            src={previewUrl || (userProfile.avatar.startsWith("http")
-                              ? userProfile.avatar
-                              : `http://localhost:3000${userProfile.avatar}`)}
+                            src={previewUrl || userProfile.avatar}
                             alt="Avatar"
                             className="absolute inset-0 w-full h-full object-cover"
+                            onError={(e) => {
+                              console.error("Erro ao carregar imagem:", e);
+                              e.currentTarget.style.display = "none";
+                            }}
                           />
                         )}
                       </div>
+
                       <input
                         type="file"
                         id="avatar-upload"
@@ -350,7 +374,9 @@ export const UserSettings: React.FC = () => {
                       </label>
                     </div>
                     <h3 className="text-2xl font-semibold text-gray-900 mt-5">
-                      {userProfile.name ? getDisplayName(userProfile.name) : "Nome do Usuário"}
+                      {userProfile.name
+                        ? getDisplayName(userProfile.name)
+                        : "Nome do Usuário"}
                     </h3>
                   </div>
                 </div>

@@ -1,8 +1,6 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
-const fs = require('fs');
-const path = require('path');
 
 const register = async (req, res) => {
   const { name, email, pass } = req.body;
@@ -97,18 +95,10 @@ const updateProfile = async (req, res) => {
     if (company) updateData.company = company;
     if (position) updateData.position = position;
 
-    // Se houver arquivo de upload, adiciona o caminho
+    // Se houver arquivo de upload, converte para base64
     if (req.file) {
-      // Remove o arquivo antigo se existir
-      if (user.avatar) {
-        const oldFilePath = path.join(__dirname, '../../', user.avatar);
-        if (fs.existsSync(oldFilePath)) {
-          fs.unlinkSync(oldFilePath);
-        }
-      }
-      
-      // Salva o novo caminho do arquivo
-      updateData.avatar = `/uploads/profiles/${req.file.filename}`;
+      const avatar = req.file.buffer.toString('base64');
+      updateData.avatar = `data:${req.file.mimetype};base64,${avatar}`;
     }
 
     // Atualiza o usuário no banco
@@ -143,22 +133,18 @@ const uploadAvatar = async (req, res) => {
       return res.status(404).json({ message: "Usuário não encontrado" });
     }
 
-    // Remove avatar antigo
-    if (user.avatar) {
-      const oldFilePath = path.join(__dirname, '../../', user.avatar);
-      if (fs.existsSync(oldFilePath)) {
-        fs.unlinkSync(oldFilePath);
-      }
-    }
-
-    // Atualiza com novo avatar
-    const avatarPath = `/uploads/profiles/${req.file.filename}`;
-    user.avatar = avatarPath;
+    // Converte a imagem para base64
+    const avatar = req.file.buffer.toString('base64');
+    
+    // Salva o avatar com o formato data URL
+    user.avatar = `data:${req.file.mimetype};base64,${avatar}`;
     await user.save();
 
+    // CORRIJA AQUI - estava retornando "avatarPath" que não existe
     return res.status(200).json({
       message: "Avatar atualizado com sucesso!",
-      avatar: avatarPath
+      avatar: user.avatar,  // Use user.avatar ao invés de avatarPath
+      user: user
     });
 
   } catch (error) {
@@ -167,10 +153,69 @@ const uploadAvatar = async (req, res) => {
   }
 };
 
+// Nova função: Trocar senha
+const changePassword = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { currentPassword, newPassword } = req.body;
+
+    // Validações básicas
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ 
+        message: "Senha atual e nova senha são obrigatórias" 
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ 
+        message: "A nova senha deve ter pelo menos 6 caracteres" 
+      });
+    }
+
+    // Busca o usuário (incluindo a senha para comparação)
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "Usuário não encontrado" });
+    }
+
+    // Verifica se a senha atual está correta
+    const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: "Senha atual incorreta" });
+    }
+
+    // Verifica se a nova senha é diferente da atual
+    const isSamePassword = await bcrypt.compare(newPassword, user.password);
+    if (isSamePassword) {
+      return res.status(400).json({ 
+        message: "A nova senha deve ser diferente da senha atual" 
+      });
+    }
+
+    // Hash da nova senha
+    const newPasswordHash = await bcrypt.hash(newPassword, 8);
+
+    // Atualiza a senha no banco
+    user.password = newPasswordHash;
+    await user.save();
+
+    return res.status(200).json({
+      message: "Senha alterada com sucesso!"
+    });
+
+  } catch (error) {
+    console.error('Erro ao alterar senha:', error);
+    return res.status(500).json({ message: "Erro ao alterar senha" });
+  }
+};
+
+
+
 module.exports = {
   register,
   login,
   getProfile,
   updateProfile,
-  uploadAvatar
+  uploadAvatar,
+  changePassword
 };

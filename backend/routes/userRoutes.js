@@ -5,6 +5,7 @@ const {
   updateProfile,
   uploadAvatar,
   getProfile,
+  changePassword
 } = require("../controllers/userController");
 const { authenticateToken } = require("../middleware/auth");
 const upload = require("../middleware/upload");
@@ -16,6 +17,8 @@ router.post("/register", register);
 router.post("/login", login);
 
 // Rotas protegidas (requerem autenticação)
+router.put("/password", authenticateToken, changePassword);
+
 router.get("/profile", authenticateToken, getProfile);
 router.put(
   "/profile",
