@@ -109,22 +109,30 @@ export const UserSettings: React.FC = () => {
   }, []);
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  // Limpa o URL da preview quando o componente for desmontado ou quando mudar a imagem
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setSelectedFile(e.target.files[0]);
+      const file = e.target.files[0];
+      setSelectedFile(file);
 
-      // Preview da imagem
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target?.result) {
-          setUserProfile({
-            ...userProfile,
-            avatar: event.target.result as string,
-          });
-        }
-      };
-      reader.readAsDataURL(e.target.files[0]);
+      // Limpa a URL anterior se existir
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+
+      // Cria um novo URL temporário para a preview da imagem
+      const newPreviewUrl = URL.createObjectURL(file);
+      setPreviewUrl(newPreviewUrl);
     }
   };
 
@@ -163,10 +171,19 @@ export const UserSettings: React.FC = () => {
         selectedFile || undefined
       );
 
+      // Atualiza o perfil com os dados do servidor
       setUserProfile(data.user);
+      
+      // Limpa estados relacionados ao arquivo
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+        setPreviewUrl(null);
+      }
+      setSelectedFile(null);
+      
       showMessage("Perfil atualizado com sucesso!");
-    } catch (error: any) {
-      showMessage(error.message || "Erro ao salvar perfil", "error");
+    } catch (error) {
+      showMessage(error instanceof Error ? error.message : "Erro ao salvar perfil", "error");
     } finally {
       setSaving(false);
     }
@@ -185,19 +202,13 @@ export const UserSettings: React.FC = () => {
     }
   };
 
-  const getFirstAndLastName = (fullName: string) => {
+  // Função para obter o nome formatado para exibição
+  const getDisplayName = (fullName: string) => {
     if (!fullName) return "";
-
-    const nameParts = fullName.trim().split(" ");
-
-    if (nameParts.length === 1) {
-      return nameParts[0]; // Se só tem um nome, retorna ele
-    }
-
-    const firstName = nameParts[0];
-    const lastName = nameParts[nameParts.length - 1]; // Pega o último elemento
-
-    return `${firstName} ${lastName}`;
+    const parts = fullName.trim().split(" ");
+    return parts.length > 1
+      ? `${parts[0]} ${parts[parts.length - 1]}`
+      : parts[0];
   };
 
   const handleSaveSecurity = async () => {
@@ -305,21 +316,18 @@ export const UserSettings: React.FC = () => {
                 <div className="lg: col-span-1">
                   <div className="bg-gray-50 rounded-lg p-6 text-center h-full flex flex-col justify-center">
                     <div className="relative inline-block">
-                      <div className="w-52 h-52 bg-gradient-to-br from-blue-500 to-green-500 rounded-full flex items-center justify-center text-white text-4xl font-bold mx-auto mb-4">
-                        {userProfile.avatar ? (
+                      <div className="relative w-52 h-52 rounded-full overflow-hidden mx-auto mb-4">
+                        <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-green-500 flex items-center justify-center text-white text-4xl font-bold">
+                          {!previewUrl && !userProfile.avatar && (userProfile.name ? userProfile.name.charAt(0).toUpperCase() : "U")}
+                        </div>
+                        {(previewUrl || userProfile.avatar) && (
                           <img
-                            src={
-                              userProfile.avatar.startsWith("http")
-                                ? userProfile.avatar
-                                : `http://localhost:3000${userProfile.avatar}`
-                            }
+                            src={previewUrl || (userProfile.avatar.startsWith("http")
+                              ? userProfile.avatar
+                              : `http://localhost:3000${userProfile.avatar}`)}
                             alt="Avatar"
-                            className="w-full h-full rounded-full object-cover"
+                            className="absolute inset-0 w-full h-full object-cover"
                           />
-                        ) : userProfile.name ? (
-                          userProfile.name.charAt(0).toUpperCase()
-                        ) : (
-                          "U"
                         )}
                       </div>
                       <input
@@ -342,14 +350,7 @@ export const UserSettings: React.FC = () => {
                       </label>
                     </div>
                     <h3 className="text-2xl font-semibold text-gray-900 mt-5">
-                      {userProfile.name
-                        ? (() => {
-                            const parts = userProfile.name.trim().split(" ");
-                            return parts.length > 1
-                              ? `${parts[0]} ${parts[parts.length - 1]}`
-                              : parts[0];
-                          })()
-                        : "Nome do Usuário"}
+                      {userProfile.name ? getDisplayName(userProfile.name) : "Nome do Usuário"}
                     </h3>
                   </div>
                 </div>

@@ -5,7 +5,7 @@ class AuthService {
 
   constructor() {
     // Para Vite usar import.meta.env ao invés de process.env
-    this.baseURL = 'http://localhost:3000/api/v1';
+    this.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
   }
 
   async register(userData: RegisterData): Promise<AuthResponse> {

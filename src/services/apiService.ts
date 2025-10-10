@@ -6,7 +6,7 @@ class ApiService {
   private baseURL: string;
 
   constructor() {
-    this.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+    this.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
   }
 
   private getAuthHeaders(): HeadersInit {
@@ -28,7 +28,7 @@ class ApiService {
   }
 
   async get<T>(endpoint: string, params?: Record<string, string>): Promise<T> {
-    const url = new URL(`${this.baseURL}/api/v1${endpoint}`);
+    const url = new URL(`${this.baseURL}${endpoint}`);
     
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
@@ -45,7 +45,7 @@ class ApiService {
   }
 
   async post<T>(endpoint: string, data: any): Promise<T> {
-    const response = await fetch(`${this.baseURL}/api/v1${endpoint}`, {
+    const response = await fetch(`${this.baseURL}${endpoint}`, {
       method: 'POST',
       headers: this.getAuthHeaders(),
       body: JSON.stringify(data),
@@ -55,7 +55,7 @@ class ApiService {
   }
 
   async put<T>(endpoint: string, data?: any): Promise<T> {
-    const response = await fetch(`${this.baseURL}/api/v1${endpoint}`, {
+    const response = await fetch(`${this.baseURL}${endpoint}`, {
       method: 'PUT',
       headers: this.getAuthHeaders(),
       body: data ? JSON.stringify(data) : undefined,
@@ -65,7 +65,7 @@ class ApiService {
   }
 
   async delete<T>(endpoint: string): Promise<T> {
-    const response = await fetch(`${this.baseURL}/api/v1${endpoint}`, {
+    const response = await fetch(`${this.baseURL}${endpoint}`, {
       method: 'DELETE',
       headers: this.getAuthHeaders(),
     });
