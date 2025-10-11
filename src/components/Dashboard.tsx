@@ -68,6 +68,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   const [selectedSectorId, setSelectedSectorId] = useState<string>('');
   const [modules, setModules] = useState<ArduinoModule[]>([]);
   const [sensorData, setSensorData] = useState<SensorData[]>([]);
+  const [allUserModules, setAllUserModules] = useState<ArduinoModule[]>([]);
+  const [onlineSensorsCount, setOnlineSensorsCount] = useState({ online: 0, total: 0 });
 
   const [alerts] = useState([
     { id: 1, type: 'warning', message: 'Sensor 3 precisa de calibração', time: '2h atrás' },
@@ -132,6 +134,21 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     });
   }, []);
 
+  // Função para carregar TODOS os módulos do usuário (para contar sensores online/total)
+  const loadAllUserModules = useCallback(async () => {
+    try {
+      const modulesData = await arduinoModuleService.getArduinoModules();
+      setAllUserModules(modulesData || []);
+      
+      // Calcular sensores online/total de TODOS os módulos do usuário
+      const online = modulesData?.filter(m => m.status === 'operational').length || 0;
+      const total = modulesData?.length || 0;
+      setOnlineSensorsCount({ online, total });
+    } catch (error) {
+      console.error('Erro ao carregar módulos do usuário:', error);
+    }
+  }, []);
+
   // Função para carregar os módulos do setor ativo
   const loadModules = useCallback(async () => {
     if (!activeSector?._id) return;
@@ -156,6 +173,13 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
       return () => clearInterval(interval);
     }
   }, [activeSector, loadModules]);
+
+  // Carregar todos os módulos do usuário quando o componente montar
+  useEffect(() => {
+    loadAllUserModules();
+    const interval = setInterval(loadAllUserModules, 10000); // Atualiza a cada 10 segundos
+    return () => clearInterval(interval);
+  }, [loadAllUserModules]);
 
   const loadActiveLocation = async () => {
     try {
@@ -458,10 +482,24 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
-                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                    <div className={`w-3 h-3 rounded-full ${
+                      onlineSensorsCount.online === onlineSensorsCount.total && onlineSensorsCount.total > 0
+                        ? 'bg-green-500'
+                        : onlineSensorsCount.online > 0
+                        ? 'bg-amber-500'
+                        : 'bg-red-500'
+                    }`}></div>
                     <span className="text-sm text-gray-700">Sensores Online</span>
                   </div>
-                  <span className="text-sm font-semibold text-green-600">12/12</span>
+                  <span className={`text-sm font-semibold ${
+                    onlineSensorsCount.online === onlineSensorsCount.total && onlineSensorsCount.total > 0
+                      ? 'text-green-600'
+                      : onlineSensorsCount.online > 0
+                      ? 'text-amber-600'
+                      : 'text-red-600'
+                  }`}>
+                    {onlineSensorsCount.online}/{onlineSensorsCount.total}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
