@@ -3,8 +3,10 @@ import { Plus, CreditCard as Edit2, Trash2, Wifi, WifiOff, AlertCircle, Settings
 import arduinoModuleService, { ArduinoModule } from '../services/arduinoModuleService';
 import sectorService, { Sector } from '../services/sectorService';
 import environmentService, { Environment } from '../services/environmentService';
+import { useNotification } from '../contexts/NotificationContext';
 
 export const ArduinoModules: React.FC = () => {
+  const notification = useNotification();
   const [modules, setModules] = useState<ArduinoModule[]>([]);
   const [sectors, setSectors] = useState<Sector[]>([]);
   const [environments, setEnvironments] = useState<Environment[]>([]);
@@ -79,6 +81,7 @@ export const ArduinoModules: React.FC = () => {
           ip_address: moduleForm.ip_address || undefined,
           configuration: moduleForm.configuration
         });
+        notification.success('Módulo atualizado!', 'As alterações foram salvas com sucesso.');
       } else {
         await arduinoModuleService.createArduinoModule({
           name: moduleForm.name,
@@ -87,6 +90,7 @@ export const ArduinoModules: React.FC = () => {
           ip_address: moduleForm.ip_address || undefined,
           configuration: moduleForm.configuration
         });
+        notification.success('Módulo criado!', 'O novo módulo foi adicionado com sucesso.');
       }
 
       setShowModal(false);
@@ -100,6 +104,15 @@ export const ArduinoModules: React.FC = () => {
       loadModules();
     } catch (error) {
       console.error('Error saving module:', error);
+      
+      // Trata o erro da API
+      if (error instanceof Error) {
+        notification.error('Erro ao salvar módulo', error.message);
+      } else if (typeof error === 'string') {
+        notification.error('Erro ao salvar módulo', error);
+      } else {
+        notification.error('Erro ao salvar módulo', 'Ocorreu um erro inesperado. Tente novamente.');
+      }
     }
   };
 
@@ -108,18 +121,32 @@ export const ArduinoModules: React.FC = () => {
 
     try {
       await arduinoModuleService.deleteArduinoModule(id);
+      notification.success('Módulo excluído!', 'O módulo foi removido com sucesso.');
       loadModules();
     } catch (error) {
       console.error('Error deleting module:', error);
+      
+      if (error instanceof Error) {
+        notification.error('Erro ao excluir módulo', error.message);
+      } else {
+        notification.error('Erro ao excluir', 'Não foi possível excluir o módulo.');
+      }
     }
   };
 
   const handlePingModule = async (moduleId: string) => {
     try {
       await arduinoModuleService.pingArduinoModule(moduleId);
+      notification.success('Teste realizado!', 'O módulo respondeu com sucesso.');
       loadModules();
     } catch (error) {
       console.error('Error pinging module:', error);
+      
+      if (error instanceof Error) {
+        notification.error('Erro ao testar módulo', error.message);
+      } else {
+        notification.error('Erro no teste', 'Não foi possível comunicar com o módulo.');
+      }
     }
   };
 
