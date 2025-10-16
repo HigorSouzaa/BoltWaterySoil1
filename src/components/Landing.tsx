@@ -264,7 +264,7 @@ const Landing: React.FC<LandingProps> = ({ onNavigateToAuth }) => {
 
             <div className="bg-white border border-gray-200 rounded-3xl p-8 hover:shadow-2xl transition-all duration-300">
               <img
-                src="/images/2.JPEG"
+                src="/images/3.png"
                 alt="ECO-SOIL PRO - Vista frontal em campo"
                 className="w-full rounded-2xl shadow-xl"
               />
