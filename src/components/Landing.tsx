@@ -1,5 +1,5 @@
 import React from 'react';
-import { Droplets, Leaf, BarChart3, Users, ArrowRight, CheckCircle } from 'lucide-react';
+import { Droplets, Leaf, BarChart3, Users, ArrowRight, CheckCircle, Sun, Battery, Zap, Shield, Wifi, CloudRain } from 'lucide-react';
 
 interface LandingProps {
   onNavigateToAuth: () => void;
@@ -133,6 +133,170 @@ const Landing: React.FC<LandingProps> = ({ onNavigateToAuth }) => {
                 Dashboards intuitivos com predições de crescimento e 
                 recomendações personalizadas para cada cultura.
               </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Product Module Section */}
+      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-gray-900 via-slate-800 to-gray-900 relative overflow-hidden">
+        <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
+        <div className="max-w-7xl mx-auto relative z-10">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 bg-green-500/10 border border-green-500/20 rounded-full px-6 py-2 mb-6">
+              <Leaf className="h-5 w-5 text-green-400" />
+              <span className="text-green-400 font-semibold">Nosso Produto</span>
+            </div>
+            <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-6">
+              ECO-SOIL PRO
+            </h2>
+            <p className="text-xl text-gray-300 max-w-3xl mx-auto leading-relaxed">
+              Módulo autônomo e sustentável com energia solar,
+              projetado para monitoramento 24/7 em qualquer condição climática
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center mb-16">
+            <div className="order-2 lg:order-1">
+              <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-3xl p-8 hover:bg-white/10 transition-all duration-300">
+                <img
+                  src="/images/1.PNG"
+                  alt="ECO-SOIL PRO - Vista lateral"
+                  className="w-full rounded-2xl shadow-2xl"
+                />
+              </div>
+            </div>
+
+            <div className="order-1 lg:order-2 space-y-6">
+              <div className="bg-gradient-to-br from-blue-500/10 to-green-500/10 border border-blue-500/20 rounded-2xl p-6 hover:scale-105 transition-all duration-300">
+                <div className="flex items-start gap-4">
+                  <div className="bg-blue-500/20 p-3 rounded-xl">
+                    <Sun className="h-8 w-8 text-blue-400" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-white mb-2">Energia Solar Integrada</h3>
+                    <p className="text-gray-300">
+                      Painel solar de alta eficiência carrega durante o dia,
+                      garantindo operação contínua sem custos de energia.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-br from-green-500/10 to-yellow-500/10 border border-green-500/20 rounded-2xl p-6 hover:scale-105 transition-all duration-300">
+                <div className="flex items-start gap-4">
+                  <div className="bg-green-500/20 p-3 rounded-xl">
+                    <Battery className="h-8 w-8 text-green-400" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-white mb-2">Bateria de Longa Duração</h3>
+                    <p className="text-gray-300">
+                      Sistema de armazenamento inteligente mantém o dispositivo
+                      funcionando perfeitamente durante a noite e dias nublados.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-2xl p-6 hover:scale-105 transition-all duration-300">
+                <div className="flex items-start gap-4">
+                  <div className="bg-purple-500/20 p-3 rounded-xl">
+                    <Wifi className="h-8 w-8 text-purple-400" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-white mb-2">Conectividade IoT</h3>
+                    <p className="text-gray-300">
+                      Transmissão em tempo real de dados para a nuvem,
+                      acessível de qualquer lugar através do seu smartphone.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center mb-16">
+            <div className="space-y-6">
+              <div className="bg-gradient-to-br from-cyan-500/10 to-blue-500/10 border border-cyan-500/20 rounded-2xl p-6 hover:scale-105 transition-all duration-300">
+                <div className="flex items-start gap-4">
+                  <div className="bg-cyan-500/20 p-3 rounded-xl">
+                    <Shield className="h-8 w-8 text-cyan-400" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-white mb-2">Design Resistente</h3>
+                    <p className="text-gray-300">
+                      Carcaça IP67 à prova d'água e poeira, projetada para
+                      resistir às condições mais adversas do campo.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-br from-orange-500/10 to-red-500/10 border border-orange-500/20 rounded-2xl p-6 hover:scale-105 transition-all duration-300">
+                <div className="flex items-start gap-4">
+                  <div className="bg-orange-500/20 p-3 rounded-xl">
+                    <Zap className="h-8 w-8 text-orange-400" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-white mb-2">Instalação Rápida</h3>
+                    <p className="text-gray-300">
+                      Sistema plug-and-play: basta inserir as sondas no solo
+                      e ativar. Começa a monitorar em segundos.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 rounded-2xl p-6 hover:scale-105 transition-all duration-300">
+                <div className="flex items-start gap-4">
+                  <div className="bg-emerald-500/20 p-3 rounded-xl">
+                    <CloudRain className="h-8 w-8 text-emerald-400" />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-xl font-bold text-white mb-2">100% Sustentável</h3>
+                    <p className="text-gray-300">
+                      Zero emissões, zero custos operacionais.
+                      Tecnologia limpa que cuida do planeta enquanto cuida da sua lavoura.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-3xl p-8 hover:bg-white/10 transition-all duration-300">
+              <img
+                src="/images/2.JPEG"
+                alt="ECO-SOIL PRO - Vista frontal em campo"
+                className="w-full rounded-2xl shadow-2xl"
+              />
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-r from-green-500/20 to-blue-500/20 border border-green-500/30 rounded-3xl p-8 md:p-12">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-8 text-center">
+              <div>
+                <div className="text-4xl font-bold text-white mb-2">24/7</div>
+                <div className="text-gray-300">Monitoramento Contínuo</div>
+              </div>
+              <div>
+                <div className="text-4xl font-bold text-white mb-2">0%</div>
+                <div className="text-gray-300">Custo de Energia</div>
+              </div>
+              <div>
+                <div className="text-4xl font-bold text-white mb-2">IP67</div>
+                <div className="text-gray-300">Proteção Total</div>
+              </div>
+              <div>
+                <div className="text-4xl font-bold text-white mb-2">5+ anos</div>
+                <div className="text-gray-300">Vida Útil</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="text-center mt-12">
+            <div className="inline-flex items-center gap-2 text-green-400 text-sm font-medium">
+              <Leaf className="h-4 w-4" />
+              <span>Fabricado com materiais recicláveis</span>
             </div>
           </div>
         </div>
