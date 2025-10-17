@@ -83,7 +83,8 @@ const MaintenanceScheduleSchema = new mongoose.Schema({
     }
   }
 }, {
-  timestamps: true
+  timestamps: true,
+  collection: 'maintenanceschedules' // Força o nome da coleção
 });
 
 // Índices para melhor performance
@@ -92,18 +93,6 @@ MaintenanceScheduleSchema.index({ user_id: 1, scheduled_date: 1 });
 MaintenanceScheduleSchema.index({ arduino_module_id: 1, status: 1 });
 MaintenanceScheduleSchema.index({ status: 1, priority: 1 });
 MaintenanceScheduleSchema.index({ scheduled_date: 1, status: 1 });
-
-// Middleware para atualizar status automaticamente
-MaintenanceScheduleSchema.pre('find', function() {
-  const now = new Date();
-  this.updateMany(
-    { 
-      scheduled_date: { $lt: now }, 
-      status: 'pending' 
-    },
-    { status: 'overdue' }
-  );
-});
 
 // Exporta o modelo para uso nos controladores
 module.exports = mongoose.model("MaintenanceSchedule", MaintenanceScheduleSchema);

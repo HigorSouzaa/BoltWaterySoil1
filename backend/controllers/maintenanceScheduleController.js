@@ -1,6 +1,7 @@
 const MaintenanceSchedule = require("../models/MaintenanceSchedule");
 const Sector = require("../models/Sector");
 const ArduinoModule = require("../models/ArduinoModule");
+const mongoose = require("mongoose");
 
 /**
  * Controller para gerenciamento de cronograma de manutenção
@@ -16,7 +17,10 @@ const getMaintenanceSchedules = async (req, res) => {
     };
 
     // Filtros opcionais
-    if (sector_id) filter.sector_id = sector_id;
+    if (sector_id) {
+      // Converter string para ObjectId
+      filter.sector_id = new mongoose.Types.ObjectId(sector_id);
+    }
     if (status) filter.status = status;
     if (priority) filter.priority = priority;
     
