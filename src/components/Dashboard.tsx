@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Droplets,
   Leaf,
   Thermometer,
   BarChart3,
   Settings,
-  Bell,
   User,
   LogOut,
   TrendingUp,
@@ -24,6 +23,7 @@ import { ArduinoModules } from './ArduinoModules';
 import { MaintenanceSchedule } from './MaintenanceSchedule';
 import environmentService from '../services/environmentService';
 import sectorService from '../services/sectorService';
+import arduinoModuleService, { ArduinoModule } from '../services/arduinoModuleService';
 
 interface DashboardProps {
   onLogout: () => void;
@@ -66,52 +66,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   const [availableSectors, setAvailableSectors] = useState<any[]>([]);
   const [selectedEnvironmentId, setSelectedEnvironmentId] = useState<string>('');
   const [selectedSectorId, setSelectedSectorId] = useState<string>('');
-  const [sensorData, setSensorData] = useState<SensorData[]>([
-    {
-      id: 'humidity',
-      name: 'Umidade do Solo',
-      value: 68,
-      unit: '%',
-      status: 'good',
-      trend: 'stable',
-      icon: <Droplets className="h-8 w-8" />,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50'
-    },
-    {
-      id: 'ph',
-      name: 'pH do Solo',
-      value: 6.8,
-      unit: '',
-      status: 'good',
-      trend: 'up',
-      icon: <Leaf className="h-8 w-8" />,
-      color: 'text-green-600',
-      bgColor: 'bg-green-50'
-    },
-    {
-      id: 'temperature',
-      name: 'Temperatura',
-      value: 24,
-      unit: '°C',
-      status: 'good',
-      trend: 'down',
-      icon: <Thermometer className="h-8 w-8" />,
-      color: 'text-amber-600',
-      bgColor: 'bg-amber-50'
-    },
-    {
-      id: 'nutrients',
-      name: 'Nutrientes NPK',
-      value: 85,
-      unit: '%',
-      status: 'warning',
-      trend: 'down',
-      icon: <Activity className="h-8 w-8" />,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50'
-    }
-  ]);
+  const [modules, setModules] = useState<ArduinoModule[]>([]);
+  const [sensorData, setSensorData] = useState<SensorData[]>([]);
+  const [allUserModules, setAllUserModules] = useState<ArduinoModule[]>([]);
+  const [onlineSensorsCount, setOnlineSensorsCount] = useState({ online: 0, total: 0 });
 
   const [alerts] = useState([
     { id: 1, type: 'warning', message: 'Sensor 3 precisa de calibração', time: '2h atrás' },
@@ -122,6 +80,106 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   useEffect(() => {
     loadActiveLocation();
   }, []);
+
+  // Função para converter módulos Arduino em dados de sensores para exibição
+  const modulesToSensorData = useCallback((modules: ArduinoModule[]): SensorData[] => {
+    return modules.map(module => {
+      // Determina o ícone baseado no nome do módulo
+      let icon = <Cpu className="h-8 w-8" />;
+      let color = 'text-gray-600';
+      let bgColor = 'bg-gray-50';
+      let unit = '';
+
+      if (module.name.toLowerCase().includes('umidade')) {
+        icon = <Droplets className="h-8 w-8" />;
+        color = 'text-blue-600';
+        bgColor = 'bg-blue-50';
+        unit = '%';
+      } else if (module.name.toLowerCase().includes('ph')) {
+        icon = <Leaf className="h-8 w-8" />;
+        color = 'text-green-600';
+        bgColor = 'bg-green-50';
+        unit = '';
+      } else if (module.name.toLowerCase().includes('temperatura')) {
+        icon = <Thermometer className="h-8 w-8" />;
+        color = 'text-amber-600';
+        bgColor = 'bg-amber-50';
+        unit = '°C';
+      } else if (module.name.toLowerCase().includes('nutriente') || module.name.toLowerCase().includes('npk')) {
+        icon = <Activity className="h-8 w-8" />;
+        color = 'text-purple-600';
+        bgColor = 'bg-purple-50';
+        unit = '%';
+      }
+
+      // Determina o status baseado no status do módulo
+      let status: 'good' | 'warning' | 'critical' = 'good';
+      if (module.status === 'offline') status = 'critical';
+      else if (module.status === 'error' || module.status === 'maintenance') status = 'warning';
+
+      // Gera um valor simulado (você pode pegar de module.configuration se tiver dados reais)
+      const value = module.configuration?.current_value || Math.random() * 100;
+
+      return {
+        id: module._id,
+        name: module.name,
+        value: typeof value === 'number' ? value : 0,
+        unit,
+        status,
+        trend: 'stable' as const,
+        icon,
+        color,
+        bgColor
+      };
+    });
+  }, []);
+
+  // Função para carregar TODOS os módulos do usuário (para contar sensores online/total)
+  const loadAllUserModules = useCallback(async () => {
+    try {
+      const modulesData = await arduinoModuleService.getArduinoModules();
+      setAllUserModules(modulesData || []);
+      
+      // Calcular sensores online/total de TODOS os módulos do usuário
+      const online = modulesData?.filter(m => m.status === 'operational').length || 0;
+      const total = modulesData?.length || 0;
+      setOnlineSensorsCount({ online, total });
+    } catch (error) {
+      console.error('Erro ao carregar módulos do usuário:', error);
+    }
+  }, []);
+
+  // Função para carregar os módulos do setor ativo
+  const loadModules = useCallback(async () => {
+    if (!activeSector?._id) return;
+
+    try {
+      const modulesData = await arduinoModuleService.getArduinoModules(activeSector._id);
+      setModules(modulesData || []);
+      
+      // Converte módulos em dados de sensores para o dashboard
+      const sensors = modulesToSensorData(modulesData || []);
+      setSensorData(sensors);
+    } catch (error) {
+      console.error('Error loading modules:', error);
+    }
+  }, [activeSector, modulesToSensorData]);
+
+  // Carregar módulos quando o setor ativo mudar
+  useEffect(() => {
+    if (activeSector?._id) {
+      loadModules();
+      const interval = setInterval(loadModules, 10000); // Atualiza a cada 10 segundos
+      return () => clearInterval(interval);
+    }
+  }, [activeSector, loadModules]);
+
+  // Carregar todos os módulos do usuário quando o componente montar
+  useEffect(() => {
+    loadAllUserModules();
+    const interval = setInterval(loadAllUserModules, 10000); // Atualiza a cada 10 segundos
+    return () => clearInterval(interval);
+  }, [loadAllUserModules]);
 
   const loadActiveLocation = async () => {
     try {
@@ -424,10 +482,24 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
-                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                    <div className={`w-3 h-3 rounded-full ${
+                      onlineSensorsCount.online === onlineSensorsCount.total && onlineSensorsCount.total > 0
+                        ? 'bg-green-500'
+                        : onlineSensorsCount.online > 0
+                        ? 'bg-amber-500'
+                        : 'bg-red-500'
+                    }`}></div>
                     <span className="text-sm text-gray-700">Sensores Online</span>
                   </div>
-                  <span className="text-sm font-semibold text-green-600">12/12</span>
+                  <span className={`text-sm font-semibold ${
+                    onlineSensorsCount.online === onlineSensorsCount.total && onlineSensorsCount.total > 0
+                      ? 'text-green-600'
+                      : onlineSensorsCount.online > 0
+                      ? 'text-amber-600'
+                      : 'text-red-600'
+                  }`}>
+                    {onlineSensorsCount.online}/{onlineSensorsCount.total}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">

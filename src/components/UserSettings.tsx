@@ -15,13 +15,12 @@ import {
   EyeOff,
   Key,
   Smartphone,
-  AlertCircle,
-  CheckCircle,
   Settings,
   Camera,
 } from "lucide-react";
 // UserSettings será implementado posteriormente - por enquanto removendo dependência do Supabase
 import { userService } from "../services/userService";
+import { useNotification } from "../contexts/NotificationContext";
 
 interface UserPreferences {
   user_id: string;
@@ -56,6 +55,7 @@ interface PasswordForm {
 }
 
 export const UserSettings: React.FC = () => {
+  const notification = useNotification();
   const [activeTab, setActiveTab] = useState<
     "profile" | "security" | "preferences" | "notifications"
   >("profile");
@@ -99,10 +99,6 @@ export const UserSettings: React.FC = () => {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("");
-  const [messageType, setMessageType] = useState<"success" | "error">(
-    "success"
-  );
 
   useEffect(() => {
     loadUserData();
@@ -161,15 +157,6 @@ export const UserSettings: React.FC = () => {
     loadProfile();
   }, []);
 
-  const showMessage = (msg: string, type: "success" | "error" = "success") => {
-    setMessage(msg);
-    setMessageType(type);
-    setTimeout(() => setMessage(""), 5000);
-  };
-
-  //
-
-  //
   const handleSaveProfile = async () => {
     setSaving(true);
     try {
@@ -195,11 +182,11 @@ export const UserSettings: React.FC = () => {
       }
       setSelectedFile(null);
 
-      showMessage("Perfil atualizado com sucesso!");
+      notification.success('Perfil atualizado!', 'Suas informações foram salvas com sucesso.');
     } catch (error) {
-      showMessage(
-        error instanceof Error ? error.message : "Erro ao salvar perfil",
-        "error"
+      notification.error(
+        'Erro ao salvar',
+        error instanceof Error ? error.message : 'Não foi possível atualizar seu perfil.'
       );
     } finally {
       setSaving(false);
@@ -210,10 +197,10 @@ export const UserSettings: React.FC = () => {
     setSaving(true);
     try {
       localStorage.setItem("userPreferences", JSON.stringify(preferences));
-      showMessage("Preferências salvas com sucesso!");
+      notification.success('Preferências salvas!', 'Suas preferências foram atualizadas.');
     } catch (error) {
       console.error("Error saving preferences:", error);
-      showMessage("Erro ao salvar preferências", "error");
+      notification.error('Erro ao salvar', 'Não foi possível salvar as preferências.');
     } finally {
       setSaving(false);
     }
@@ -235,10 +222,10 @@ export const UserSettings: React.FC = () => {
         "securitySettings",
         JSON.stringify(securitySettings)
       );
-      showMessage("Configurações de segurança salvas com sucesso!");
+      notification.success('Segurança atualizada!', 'Suas configurações de segurança foram salvas.');
     } catch (error) {
       console.error("Error saving security settings:", error);
-      showMessage("Erro ao salvar configurações de segurança", "error");
+      notification.error('Erro ao salvar', 'Não foi possível salvar as configurações de segurança.');
     } finally {
       setSaving(false);
     }
@@ -246,12 +233,12 @@ export const UserSettings: React.FC = () => {
 
   const handleChangePassword = async () => {
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      showMessage("As senhas não coincidem", "error");
+      notification.warning('Senhas não coincidem', 'A nova senha e a confirmação devem ser iguais.');
       return;
     }
 
     if (passwordForm.newPassword.length < 8) {
-      showMessage("A nova senha deve ter pelo menos 8 caracteres", "error");
+      notification.warning('Senha muito curta', 'A nova senha deve ter pelo menos 8 caracteres.');
       return;
     }
 
@@ -268,9 +255,9 @@ export const UserSettings: React.FC = () => {
         confirmPassword: "",
       });
 
-      showMessage("Senha alterada com sucesso!");
+      notification.success('Senha alterada!', 'Sua senha foi atualizada com sucesso.');
     } catch (error: any) {
-      showMessage(error.message || "Erro ao alterar senha", "error");
+      notification.error('Erro ao alterar senha', error.message || 'Não foi possível alterar a senha.');
     } finally {
       setSaving(false);
     }
@@ -926,24 +913,6 @@ export const UserSettings: React.FC = () => {
                   </button>
                 </div>
               </div>
-            </div>
-          )}
-
-          {/* Message Display */}
-          {message && (
-            <div
-              className={`mt-6 p-4 rounded-lg flex items-center gap-2 ${
-                messageType === "error"
-                  ? "bg-red-100 text-red-700 border border-red-200"
-                  : "bg-green-100 text-green-700 border border-green-200"
-              }`}
-            >
-              {messageType === "error" ? (
-                <AlertCircle size={16} />
-              ) : (
-                <CheckCircle size={16} />
-              )}
-              {message}
             </div>
           )}
         </div>

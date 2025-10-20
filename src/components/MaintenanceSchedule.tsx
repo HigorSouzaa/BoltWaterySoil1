@@ -1,24 +1,10 @@
-import React, { useState, useEffect, useCallback } from "react";
-import {
-  Plus,
-  CreditCard as Edit2,
-  Trash2,
-  Calendar,
-  CheckCircle,
-  Clock,
-  AlertTriangle,
-} from "lucide-react";
-import maintenanceScheduleService, {
-  MaintenanceSchedule as MaintenanceScheduleType,
-} from "../services/maintenanceScheduleService";
-import sectorService, { Sector } from "../services/sectorService";
-import environmentService, {
-  Environment,
-} from "../services/environmentService";
-import arduinoModuleService, {
-  ArduinoModule,
-} from "../services/arduinoModuleService";
-import { useNotification } from "../contexts/NotificationContext";
+import React, { useState, useEffect, useCallback } from 'react';
+import { Plus, CreditCard as Edit2, Trash2, Calendar, CheckCircle, Clock, AlertTriangle } from 'lucide-react';
+import maintenanceScheduleService, { MaintenanceSchedule as MaintenanceScheduleType } from '../services/maintenanceScheduleService';
+import sectorService, { Sector } from '../services/sectorService';
+import environmentService, { Environment } from '../services/environmentService';
+import arduinoModuleService, { ArduinoModule } from '../services/arduinoModuleService';
+import { useNotification } from '../contexts/NotificationContext';
 
 export const MaintenanceSchedule: React.FC = () => {
   const { success, error, warning } = useNotification();
@@ -45,10 +31,9 @@ export const MaintenanceSchedule: React.FC = () => {
       const data = await environmentService.getEnvironments();
       setEnvironments(data || []);
     } catch (err) {
-      console.error("Error loading environments:", err);
-      const errorMessage =
-        err instanceof Error ? err.message : "Erro ao carregar ambientes";
-      error("Erro ao carregar ambientes", errorMessage);
+      console.error('Error loading environments:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar ambientes';
+      error('Erro ao carregar ambientes', errorMessage);
     }
   }, [error]);
 
@@ -61,10 +46,9 @@ export const MaintenanceSchedule: React.FC = () => {
         setSelectedSector(data[0]._id);
       }
     } catch (err) {
-      console.error("Error loading sectors:", err);
-      const errorMessage =
-        err instanceof Error ? err.message : "Erro ao carregar setores";
-      error("Erro ao carregar setores", errorMessage);
+      console.error('Error loading sectors:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar setores';
+      error('Erro ao carregar setores', errorMessage);
     }
   }, [selectedSector, error]);
 
@@ -76,10 +60,9 @@ export const MaintenanceSchedule: React.FC = () => {
       const data = await arduinoModuleService.getArduinoModules(selectedSector);
       setModules(data || []);
     } catch (err) {
-      console.error("Error loading modules:", err);
-      const errorMessage =
-        err instanceof Error ? err.message : "Erro ao carregar módulos";
-      error("Erro ao carregar módulos", errorMessage);
+      console.error('Error loading modules:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar módulos';
+      error('Erro ao carregar módulos', errorMessage);
     }
   }, [selectedSector, error]);
 
@@ -90,15 +73,13 @@ export const MaintenanceSchedule: React.FC = () => {
     try {
       // Buscar apenas por setor, SEM filtro de status ainda
       const filters = {
-        sector_id: selectedSector,
+        sector_id: selectedSector
       };
-
-      const data = await maintenanceScheduleService.getMaintenanceSchedules(
-        filters
-      );
+      
+      const data = await maintenanceScheduleService.getMaintenanceSchedules(filters);
 
       // Primeiro, atualizar status de manutenções atrasadas
-      const updatedSchedules = (data || []).map((schedule) => {
+      const updatedSchedules = (data || []).map(schedule => {
         const scheduledDate = new Date(schedule.scheduled_date);
         const now = new Date();
 
@@ -110,18 +91,15 @@ export const MaintenanceSchedule: React.FC = () => {
 
       // DEPOIS, filtrar por status se necessário
       let filteredSchedules = updatedSchedules;
-      if (filterStatus !== "all") {
-        filteredSchedules = updatedSchedules.filter(
-          (schedule) => schedule.status === filterStatus
-        );
+      if (filterStatus !== 'all') {
+        filteredSchedules = updatedSchedules.filter(schedule => schedule.status === filterStatus);
       }
 
       setSchedules(filteredSchedules);
     } catch (err) {
-      console.error("Error loading schedules:", err);
-      const errorMessage =
-        err instanceof Error ? err.message : "Erro ao carregar manutenções";
-      error("Erro ao carregar manutenções", errorMessage);
+      console.error('Error loading schedules:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar manutenções';
+      error('Erro ao carregar manutenções', errorMessage);
     }
   }, [selectedSector, filterStatus, error]);
 
@@ -147,36 +125,29 @@ export const MaintenanceSchedule: React.FC = () => {
     try {
       // Validação
       if (!scheduleForm.title.trim()) {
-        warning("Validação", "O título é obrigatório");
+        warning('Validação', 'O título é obrigatório');
         return;
       }
 
       if (!scheduleForm.scheduled_date) {
-        warning("Validação", "A data agendada é obrigatória");
+        warning('Validação', 'A data agendada é obrigatória');
         return;
       }
 
       if (!selectedSector) {
-        warning("Validação", "Selecione um setor");
+        warning('Validação', 'Selecione um setor');
         return;
       }
 
       if (editingSchedule) {
         // Atualizar manutenção existente
-        await maintenanceScheduleService.updateMaintenanceSchedule(
-          editingSchedule._id,
-          {
-            title: scheduleForm.title.trim(),
-            description: scheduleForm.description.trim() || undefined,
-            scheduled_date: scheduleForm.scheduled_date,
-            priority: scheduleForm.priority as
-              | "low"
-              | "medium"
-              | "high"
-              | "critical",
-          }
-        );
-        success("Sucesso", "Manutenção atualizada com sucesso");
+        await maintenanceScheduleService.updateMaintenanceSchedule(editingSchedule._id, {
+          title: scheduleForm.title.trim(),
+          description: scheduleForm.description.trim() || undefined,
+          scheduled_date: scheduleForm.scheduled_date,
+          priority: scheduleForm.priority as 'low' | 'medium' | 'high' | 'critical'
+        });
+        success('Sucesso', 'Manutenção atualizada com sucesso');
       } else {
         // Criar nova manutenção
         const newScheduleData = {
@@ -185,67 +156,58 @@ export const MaintenanceSchedule: React.FC = () => {
           sector_id: selectedSector,
           arduino_module_id: scheduleForm.arduino_module_id || undefined,
           scheduled_date: scheduleForm.scheduled_date,
-          priority: scheduleForm.priority as
-            | "low"
-            | "medium"
-            | "high"
-            | "critical",
+          priority: scheduleForm.priority as 'low' | 'medium' | 'high' | 'critical'
         };
-
-        await maintenanceScheduleService.createMaintenanceSchedule(
-          newScheduleData
-        );
-        success("Sucesso", "Manutenção criada com sucesso");
+        
+        await maintenanceScheduleService.createMaintenanceSchedule(newScheduleData);
+        success('Sucesso', 'Manutenção criada com sucesso');
       }
 
       // Limpar formulário e fechar modal
       setShowModal(false);
       setEditingSchedule(null);
       setScheduleForm({
-        title: "",
-        description: "",
-        scheduled_date: "",
-        priority: "medium",
-        arduino_module_id: "",
+        title: '',
+        description: '',
+        scheduled_date: '',
+        priority: 'medium',
+        arduino_module_id: ''
       });
 
       // Recarregar lista
       await loadSchedules();
     } catch (err) {
-      console.error("Error saving schedule:", err);
-      const errorMessage =
-        err instanceof Error ? err.message : "Erro ao salvar manutenção";
-      error("Erro", errorMessage);
+      console.error('Error saving schedule:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao salvar manutenção';
+      error('Erro', errorMessage);
     }
   };
 
   const handleDeleteSchedule = async (id: string) => {
-    if (!confirm("Tem certeza que deseja excluir esta manutenção?")) {
+    if (!confirm('Tem certeza que deseja excluir esta manutenção?')) {
       return;
     }
 
     try {
       await maintenanceScheduleService.deleteMaintenanceSchedule(id);
-      success("Sucesso", "Manutenção excluída com sucesso");
+      success('Sucesso', 'Manutenção excluída com sucesso');
       loadSchedules();
     } catch (err) {
-      console.error("Error deleting schedule:", err);
-      const errorMessage =
-        err instanceof Error ? err.message : "Erro ao excluir manutenção";
-      error("Erro", errorMessage);
+      console.error('Error deleting schedule:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao excluir manutenção';
+      error('Erro', errorMessage);
     }
   };
 
   const handleCompleteSchedule = async (id: string) => {
     try {
       await maintenanceScheduleService.completeMaintenanceSchedule(id);
-      success("Sucesso", "Manutenção marcada como concluída");
+      success('Sucesso', 'Manutenção marcada como concluída');
       loadSchedules();
     } catch (err) {
-      console.error("Error completing schedule:", err);
-      const errorMessage =
-        err instanceof Error ? err.message : "Erro ao concluir manutenção";
-      error("Erro", errorMessage);
+      console.error('Error completing schedule:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao concluir manutenção';
+      error('Erro', errorMessage);
     }
   };
 
