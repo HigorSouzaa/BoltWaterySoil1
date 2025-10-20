@@ -1,18 +1,18 @@
-const ArduinoModule = require("../models/ArduinoModule");
+const WaterySoilModule = require("../models/WaterySoilModule");
 const Sector = require("../models/Sector");
 
 /**
- * Controller para gerenciamento de módulos Arduino
+ * Controller para gerenciamento de módulos WaterySoil
  */
 
-// GET /api/v1/arduino-modules - Listar todos os módulos do usuário
-const getArduinoModules = async (req, res) => {
+// GET /api/v1/waterysoil-modules - Listar todos os módulos do usuário
+const getWaterySoilModules = async (req, res) => {
   try {
     const { sector_id, status } = req.query;
-    
-    let filter = { 
+
+    let filter = {
       user_id: req.user._id,
-      is_active: true 
+      is_active: true
     };
 
     // Se sector_id foi fornecido, filtra por ele
@@ -25,7 +25,7 @@ const getArduinoModules = async (req, res) => {
       filter.status = status;
     }
 
-    const modules = await ArduinoModule.find(filter)
+    const modules = await WaterySoilModule.find(filter)
       .populate('sector_id', 'name environment_id')
       .populate({
         path: 'sector_id',
@@ -42,18 +42,18 @@ const getArduinoModules = async (req, res) => {
       count: modules.length
     });
   } catch (error) {
-    console.error('Erro ao buscar módulos Arduino:', error);
-    return res.status(500).json({ 
+    console.error('Erro ao buscar módulos WaterySoil:', error);
+    return res.status(500).json({
       success: false,
-      message: "Erro interno do servidor" 
+      message: "Erro interno do servidor"
     });
   }
 };
 
-// GET /api/v1/arduino-modules/:id - Buscar módulo específico
-const getArduinoModuleById = async (req, res) => {
+// GET /api/v1/waterysoil-modules/:id - Buscar módulo específico
+const getWaterySoilModuleById = async (req, res) => {
   try {
-    const module = await ArduinoModule.findOne({
+    const module = await WaterySoilModule.findOne({
       _id: req.params.id,
       user_id: req.user._id,
       is_active: true
@@ -69,7 +69,7 @@ const getArduinoModuleById = async (req, res) => {
     if (!module) {
       return res.status(404).json({
         success: false,
-        message: "Módulo Arduino não encontrado"
+        message: "Módulo WaterySoil não encontrado"
       });
     }
 
@@ -78,16 +78,16 @@ const getArduinoModuleById = async (req, res) => {
       data: module
     });
   } catch (error) {
-    console.error('Erro ao buscar módulo Arduino:', error);
-    return res.status(500).json({ 
+    console.error('Erro ao buscar módulo WaterySoil:', error);
+    return res.status(500).json({
       success: false,
-      message: "Erro interno do servidor" 
+      message: "Erro interno do servidor"
     });
   }
 };
 
-// POST /api/v1/arduino-modules - Criar novo módulo
-const createArduinoModule = async (req, res) => {
+// POST /api/v1/waterysoil-modules - Criar novo módulo
+const createWaterySoilModule = async (req, res) => {
   try {
     const { 
       name, 
@@ -129,7 +129,7 @@ const createArduinoModule = async (req, res) => {
     }
 
     // Verifica se já existe um módulo com o mesmo nome no setor
-    const existingModule = await ArduinoModule.findOne({
+    const existingModule = await WaterySoilModule.findOne({
       name: name.trim(),
       sector_id: sector_id,
       user_id: req.user._id,
@@ -145,7 +145,7 @@ const createArduinoModule = async (req, res) => {
 
     // Se IP foi fornecido, verifica se já está em uso
     if (ip_address) {
-      const existingIP = await ArduinoModule.findOne({
+      const existingIP = await WaterySoilModule.findOne({
         ip_address: ip_address.trim(),
         user_id: req.user._id,
         is_active: true
@@ -160,7 +160,7 @@ const createArduinoModule = async (req, res) => {
     }
 
     // Cria o novo módulo
-    const module = new ArduinoModule({
+    const module = new WaterySoilModule({
       name: name.trim(),
       module_type: module_type || 'sensor',
       sector_id,
@@ -187,19 +187,19 @@ const createArduinoModule = async (req, res) => {
     return res.status(201).json({
       success: true,
       data: module,
-      message: "Módulo Arduino criado com sucesso"
+      message: "Módulo WaterySoil criado com sucesso"
     });
   } catch (error) {
-    console.error('Erro ao criar módulo Arduino:', error);
-    return res.status(500).json({ 
+    console.error('Erro ao criar módulo WaterySoil:', error);
+    return res.status(500).json({
       success: false,
-      message: "Erro interno do servidor" 
+      message: "Erro interno do servidor"
     });
   }
 };
 
-// PUT /api/v1/arduino-modules/:id - Atualizar módulo
-const updateArduinoModule = async (req, res) => {
+// PUT /api/v1/waterysoil-modules/:id - Atualizar módulo
+const updateWaterySoilModule = async (req, res) => {
   try {
     const { 
       name, 
@@ -220,7 +220,7 @@ const updateArduinoModule = async (req, res) => {
     }
 
     // Verifica se o módulo existe e pertence ao usuário
-    const module = await ArduinoModule.findOne({
+    const module = await WaterySoilModule.findOne({
       _id: req.params.id,
       user_id: req.user._id,
       is_active: true
@@ -229,12 +229,12 @@ const updateArduinoModule = async (req, res) => {
     if (!module) {
       return res.status(404).json({
         success: false,
-        message: "Módulo Arduino não encontrado"
+        message: "Módulo WaterySoil não encontrado"
       });
     }
 
     // Verifica se já existe outro módulo com o mesmo nome no mesmo setor
-    const existingModule = await ArduinoModule.findOne({
+    const existingModule = await WaterySoilModule.findOne({
       name: name.trim(),
       sector_id: module.sector_id,
       user_id: req.user._id,
@@ -251,7 +251,7 @@ const updateArduinoModule = async (req, res) => {
 
     // Se IP foi fornecido e é diferente do atual, verifica se já está em uso
     if (ip_address && ip_address.trim() !== module.ip_address) {
-      const existingIP = await ArduinoModule.findOne({
+      const existingIP = await WaterySoilModule.findOne({
         ip_address: ip_address.trim(),
         user_id: req.user._id,
         is_active: true,
@@ -293,21 +293,21 @@ const updateArduinoModule = async (req, res) => {
     return res.status(200).json({
       success: true,
       data: module,
-      message: "Módulo Arduino atualizado com sucesso"
+      message: "Módulo WaterySoil atualizado com sucesso"
     });
   } catch (error) {
-    console.error('Erro ao atualizar módulo Arduino:', error);
-    return res.status(500).json({ 
+    console.error('Erro ao atualizar módulo WaterySoil:', error);
+    return res.status(500).json({
       success: false,
-      message: "Erro interno do servidor" 
+      message: "Erro interno do servidor"
     });
   }
 };
 
-// PUT /api/v1/arduino-modules/:id/ping - Fazer ping no módulo
-const pingArduinoModule = async (req, res) => {
+// PUT /api/v1/waterysoil-modules/:id/ping - Fazer ping no módulo
+const pingWaterySoilModule = async (req, res) => {
   try {
-    const module = await ArduinoModule.findOne({
+    const module = await WaterySoilModule.findOne({
       _id: req.params.id,
       user_id: req.user._id,
       is_active: true
@@ -316,14 +316,14 @@ const pingArduinoModule = async (req, res) => {
     if (!module) {
       return res.status(404).json({
         success: false,
-        message: "Módulo Arduino não encontrado"
+        message: "Módulo WaterySoil não encontrado"
       });
     }
 
     // Atualiza o último ping e status
     module.last_ping = new Date();
     module.status = 'operational';
-    
+
     await module.save();
 
     return res.status(200).json({
@@ -333,17 +333,17 @@ const pingArduinoModule = async (req, res) => {
     });
   } catch (error) {
     console.error('Erro ao fazer ping no módulo:', error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       success: false,
-      message: "Erro interno do servidor" 
+      message: "Erro interno do servidor"
     });
   }
 };
 
-// DELETE /api/v1/arduino-modules/:id - Deletar módulo (soft delete)
-const deleteArduinoModule = async (req, res) => {
+// DELETE /api/v1/waterysoil-modules/:id - Deletar módulo (soft delete)
+const deleteWaterySoilModule = async (req, res) => {
   try {
-    const module = await ArduinoModule.findOne({
+    const module = await WaterySoilModule.findOne({
       _id: req.params.id,
       user_id: req.user._id,
       is_active: true
@@ -352,7 +352,7 @@ const deleteArduinoModule = async (req, res) => {
     if (!module) {
       return res.status(404).json({
         success: false,
-        message: "Módulo Arduino não encontrado"
+        message: "Módulo WaterySoil não encontrado"
       });
     }
 
@@ -362,22 +362,22 @@ const deleteArduinoModule = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: "Módulo Arduino removido com sucesso"
+      message: "Módulo WaterySoil removido com sucesso"
     });
   } catch (error) {
-    console.error('Erro ao deletar módulo Arduino:', error);
-    return res.status(500).json({ 
+    console.error('Erro ao deletar módulo WaterySoil:', error);
+    return res.status(500).json({
       success: false,
-      message: "Erro interno do servidor" 
+      message: "Erro interno do servidor"
     });
   }
 };
 
 module.exports = {
-  getArduinoModules,
-  getArduinoModuleById,
-  createArduinoModule,
-  updateArduinoModule,
-  pingArduinoModule,
-  deleteArduinoModule
+  getWaterySoilModules,
+  getWaterySoilModuleById,
+  createWaterySoilModule,
+  updateWaterySoilModule,
+  pingWaterySoilModule,
+  deleteWaterySoilModule
 };

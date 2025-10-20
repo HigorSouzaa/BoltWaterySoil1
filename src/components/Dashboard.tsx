@@ -19,11 +19,11 @@ import {
 } from 'lucide-react';
 import { EnvironmentManager } from './EnvironmentManager';
 import { UserSettings } from './UserSettings';
-import { ArduinoModules } from './ArduinoModules';
+import { WaterySoilModules } from './WaterySoilModules';
 import { MaintenanceSchedule } from './MaintenanceSchedule';
 import environmentService from '../services/environmentService';
 import sectorService from '../services/sectorService';
-import arduinoModuleService, { ArduinoModule } from '../services/arduinoModuleService';
+import waterySoilModuleService, { WaterySoilModule } from '../services/waterySoilModuleService';
 
 interface DashboardProps {
   onLogout: () => void;
@@ -66,9 +66,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   const [availableSectors, setAvailableSectors] = useState<any[]>([]);
   const [selectedEnvironmentId, setSelectedEnvironmentId] = useState<string>('');
   const [selectedSectorId, setSelectedSectorId] = useState<string>('');
-  const [modules, setModules] = useState<ArduinoModule[]>([]);
+  const [modules, setModules] = useState<WaterySoilModule[]>([]);
   const [sensorData, setSensorData] = useState<SensorData[]>([]);
-  const [allUserModules, setAllUserModules] = useState<ArduinoModule[]>([]);
+  const [allUserModules, setAllUserModules] = useState<WaterySoilModule[]>([]);
   const [onlineSensorsCount, setOnlineSensorsCount] = useState({ online: 0, total: 0 });
 
   const [alerts] = useState([
@@ -81,8 +81,8 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     loadActiveLocation();
   }, []);
 
-  // Função para converter módulos Arduino em dados de sensores para exibição
-  const modulesToSensorData = useCallback((modules: ArduinoModule[]): SensorData[] => {
+  // Função para converter módulos WaterySoil em dados de sensores para exibição
+  const modulesToSensorData = useCallback((modules: WaterySoilModule[]): SensorData[] => {
     return modules.map(module => {
       // Determina o ícone baseado no nome do módulo
       let icon = <Cpu className="h-8 w-8" />;
@@ -137,9 +137,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   // Função para carregar TODOS os módulos do usuário (para contar sensores online/total)
   const loadAllUserModules = useCallback(async () => {
     try {
-      const modulesData = await arduinoModuleService.getArduinoModules();
+      const modulesData = await waterySoilModuleService.getWaterySoilModules();
       setAllUserModules(modulesData || []);
-      
+
       // Calcular sensores online/total de TODOS os módulos do usuário
       const online = modulesData?.filter(m => m.status === 'operational').length || 0;
       const total = modulesData?.length || 0;
@@ -154,9 +154,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     if (!activeSector?._id) return;
 
     try {
-      const modulesData = await arduinoModuleService.getArduinoModules(activeSector._id);
+      const modulesData = await waterySoilModuleService.getWaterySoilModules(activeSector._id);
       setModules(modulesData || []);
-      
+
       // Converte módulos em dados de sensores para o dashboard
       const sensors = modulesToSensorData(modulesData || []);
       setSensorData(sensors);
@@ -358,7 +358,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
               <button
                 onClick={() => setCurrentView('modules')}
                 className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                title="Módulos Arduino"
+                title="Módulos WaterySoil"
               >
                 <Cpu className="h-5 w-5" />
               </button>
@@ -396,7 +396,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
       {currentView === 'environments' ? (
         <EnvironmentManager />
       ) : currentView === 'modules' ? (
-        <ArduinoModules />
+        <WaterySoilModules />
       ) : currentView === 'maintenance' ? (
         <MaintenanceSchedule />
       ) : currentView === 'settings' ? (

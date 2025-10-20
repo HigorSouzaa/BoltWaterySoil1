@@ -3,7 +3,7 @@ import { Plus, CreditCard as Edit2, Trash2, Calendar, CheckCircle, Clock, AlertT
 import maintenanceScheduleService, { MaintenanceSchedule as MaintenanceScheduleType } from '../services/maintenanceScheduleService';
 import sectorService, { Sector } from '../services/sectorService';
 import environmentService, { Environment } from '../services/environmentService';
-import arduinoModuleService, { ArduinoModule } from '../services/arduinoModuleService';
+import waterySoilModuleService, { WaterySoilModule } from '../services/waterySoilModuleService';
 import { useNotification } from '../contexts/NotificationContext';
 
 export const MaintenanceSchedule: React.FC = () => {
@@ -11,7 +11,7 @@ export const MaintenanceSchedule: React.FC = () => {
   const [schedules, setSchedules] = useState<MaintenanceScheduleType[]>([]);
   const [sectors, setSectors] = useState<Sector[]>([]);
   const [environments, setEnvironments] = useState<Environment[]>([]);
-  const [modules, setModules] = useState<ArduinoModule[]>([]);
+  const [modules, setModules] = useState<WaterySoilModule[]>([]);
   const [selectedSector, setSelectedSector] = useState<string>("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [showModal, setShowModal] = useState(false);
@@ -57,7 +57,7 @@ export const MaintenanceSchedule: React.FC = () => {
     if (!selectedSector) return;
 
     try {
-      const data = await arduinoModuleService.getArduinoModules(selectedSector);
+      const data = await waterySoilModuleService.getWaterySoilModules(selectedSector);
       setModules(data || []);
     } catch (err) {
       console.error('Error loading modules:', err);
@@ -308,11 +308,11 @@ export const MaintenanceSchedule: React.FC = () => {
   };
 
   const getModuleName = (
-    moduleId: string | ArduinoModule | undefined | null
+    moduleId: string | WaterySoilModule | undefined | null
   ) => {
     if (!moduleId) return "Geral";
 
-    // Se moduleId é um objeto ArduinoModule, retorna o nome diretamente
+    // Se moduleId é um objeto WaterySoilModule, retorna o nome diretamente
     if (typeof moduleId === "object" && moduleId !== null) {
       return moduleId.name;
     }

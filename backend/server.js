@@ -4,7 +4,7 @@ const dotenv = require("dotenv");
 const userRoutes = require("./routes/userRoutes");
 const environmentRoutes = require("./routes/environmentRoutes");
 const sectorRoutes = require("./routes/sectorRoutes");
-const arduinoModuleRoutes = require("./routes/arduinoModuleRoutes");
+const waterySoilModuleRoutes = require("./routes/waterySoilModuleRoutes");
 const maintenanceScheduleRoutes = require("./routes/maintenanceScheduleRoutes");
 dotenv.config();
 require("./config/database.js");
@@ -21,7 +21,7 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }));
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/environments", environmentRoutes);
 app.use("/api/v1/sectors", sectorRoutes);
-app.use("/api/v1/arduino-modules", arduinoModuleRoutes);
+app.use("/api/v1/waterysoil-modules", waterySoilModuleRoutes);
 app.use("/api/v1/maintenance-schedules", maintenanceScheduleRoutes);
 // Serve arquivos estáticos da pasta uploads
 app.use('/uploads', express.static('uploads'));

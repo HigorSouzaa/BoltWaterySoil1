@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 
 /**
  * Schema do cronograma de manutenção.
- * Representa tarefas de manutenção agendadas para setores ou módulos Arduino
+ * Representa tarefas de manutenção agendadas para setores ou módulos WaterySoil
  */
 const MaintenanceScheduleSchema = new mongoose.Schema(
   {
@@ -24,7 +24,7 @@ const MaintenanceScheduleSchema = new mongoose.Schema(
     },
     arduino_module_id: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "ArduinoModule",
+      ref: "WaterySoilModule",
       required: false, // Pode ser uma manutenção geral do setor
     },
     user_id: {

@@ -1,18 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, CreditCard as Edit2, Trash2, Wifi, WifiOff, AlertCircle, Settings } from 'lucide-react';
-import arduinoModuleService, { ArduinoModule } from '../services/arduinoModuleService';
+import waterySoilModuleService, { WaterySoilModule } from '../services/waterySoilModuleService';
 import sectorService, { Sector } from '../services/sectorService';
 import environmentService, { Environment } from '../services/environmentService';
 import { useNotification } from '../contexts/NotificationContext';
 
-export const ArduinoModules: React.FC = () => {
+export const WaterySoilModules: React.FC = () => {
   const notification = useNotification();
-  const [modules, setModules] = useState<ArduinoModule[]>([]);
+  const [modules, setModules] = useState<WaterySoilModule[]>([]);
   const [sectors, setSectors] = useState<Sector[]>([]);
   const [environments, setEnvironments] = useState<Environment[]>([]);
   const [selectedSector, setSelectedSector] = useState<string>('');
   const [showModal, setShowModal] = useState(false);
-  const [editingModule, setEditingModule] = useState<ArduinoModule | null>(null);
+  const [editingModule, setEditingModule] = useState<WaterySoilModule | null>(null);
   const [moduleForm, setModuleForm] = useState({
     name: '',
     module_type: 'sensor',
@@ -63,7 +63,7 @@ export const ArduinoModules: React.FC = () => {
     if (!selectedSector) return;
 
     try {
-      const data = await arduinoModuleService.getArduinoModules(selectedSector);
+      const data = await waterySoilModuleService.getWaterySoilModules(selectedSector);
       setModules(data || []);
     } catch (error) {
       console.error('Error loading modules:', error);
@@ -75,7 +75,7 @@ export const ArduinoModules: React.FC = () => {
 
     try {
       if (editingModule) {
-        await arduinoModuleService.updateArduinoModule(editingModule._id, {
+        await waterySoilModuleService.updateWaterySoilModule(editingModule._id, {
           name: moduleForm.name,
           module_type: moduleForm.module_type as any,
           ip_address: moduleForm.ip_address || undefined,
@@ -83,7 +83,7 @@ export const ArduinoModules: React.FC = () => {
         });
         notification.success('Módulo atualizado!', 'As alterações foram salvas com sucesso.');
       } else {
-        await arduinoModuleService.createArduinoModule({
+        await waterySoilModuleService.createWaterySoilModule({
           name: moduleForm.name,
           module_type: moduleForm.module_type as any,
           sector_id: selectedSector,
@@ -120,12 +120,12 @@ export const ArduinoModules: React.FC = () => {
     if (!confirm('Tem certeza que deseja excluir este módulo?')) return;
 
     try {
-      await arduinoModuleService.deleteArduinoModule(id);
+      await waterySoilModuleService.deleteWaterySoilModule(id);
       notification.success('Módulo excluído!', 'O módulo foi removido com sucesso.');
       loadModules();
     } catch (error) {
       console.error('Error deleting module:', error);
-      
+
       if (error instanceof Error) {
         notification.error('Erro ao excluir módulo', error.message);
       } else {
@@ -136,12 +136,12 @@ export const ArduinoModules: React.FC = () => {
 
   const handlePingModule = async (moduleId: string) => {
     try {
-      await arduinoModuleService.pingArduinoModule(moduleId);
+      await waterySoilModuleService.pingWaterySoilModule(moduleId);
       notification.success('Teste realizado!', 'O módulo respondeu com sucesso.');
       loadModules();
     } catch (error) {
       console.error('Error pinging module:', error);
-      
+
       if (error instanceof Error) {
         notification.error('Erro ao testar módulo', error.message);
       } else {
@@ -150,7 +150,7 @@ export const ArduinoModules: React.FC = () => {
     }
   };
 
-  const openEditModule = (module: ArduinoModule) => {
+  const openEditModule = (module: WaterySoilModule) => {
     setEditingModule(module);
     setModuleForm({
       name: module.name,
@@ -215,7 +215,7 @@ export const ArduinoModules: React.FC = () => {
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
               <Settings size={28} />
-              Módulos Arduino
+              Módulos WaterySoil
             </h2>
             <button
               onClick={() => {

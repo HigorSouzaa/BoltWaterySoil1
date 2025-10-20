@@ -1,10 +1,10 @@
 const mongoose = require("mongoose");
 
 /**
- * Schema do módulo Arduino.
- * Representa um dispositivo Arduino conectado ao sistema
+ * Schema do módulo WaterySoil.
+ * Representa um dispositivo WaterySoil conectado ao sistema
  */
-const ArduinoModuleSchema = new mongoose.Schema({
+const WaterySoilModuleSchema = new mongoose.Schema({
   name: { 
     type: String, 
     required: true,
@@ -73,9 +73,9 @@ const ArduinoModuleSchema = new mongoose.Schema({
 });
 
 // Índices para melhor performance
-ArduinoModuleSchema.index({ sector_id: 1, is_active: 1 });
-ArduinoModuleSchema.index({ user_id: 1, status: 1 });
-ArduinoModuleSchema.index({ ip_address: 1 });
+WaterySoilModuleSchema.index({ sector_id: 1, is_active: 1 });
+WaterySoilModuleSchema.index({ user_id: 1, status: 1 });
+WaterySoilModuleSchema.index({ ip_address: 1 });
 
 // Exporta o modelo para uso nos controladores
-module.exports = mongoose.model("ArduinoModule", ArduinoModuleSchema);
+module.exports = mongoose.model("WaterySoilModule", WaterySoilModuleSchema);

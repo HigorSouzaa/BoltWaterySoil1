@@ -1,6 +1,6 @@
 const MaintenanceSchedule = require("../models/MaintenanceSchedule");
 const Sector = require("../models/Sector");
-const ArduinoModule = require("../models/ArduinoModule");
+const WaterySoilModule = require("../models/WaterySoilModule");
 const mongoose = require("mongoose");
 
 /**
@@ -147,7 +147,7 @@ const createMaintenanceSchedule = async (req, res) => {
 
     // Se arduino_module_id foi fornecido, verifica se existe e pertence ao setor
     if (arduino_module_id) {
-      const module = await ArduinoModule.findOne({
+      const module = await WaterySoilModule.findOne({
         _id: arduino_module_id,
         sector_id: sector_id,
         user_id: req.user._id,
@@ -157,7 +157,7 @@ const createMaintenanceSchedule = async (req, res) => {
       if (!module) {
         return res.status(400).json({
           success: false,
-          message: "Módulo Arduino não encontrado ou não pertence ao setor",
+          message: "Módulo WaterySoil não encontrado ou não pertence ao setor",
         });
       }
     }
