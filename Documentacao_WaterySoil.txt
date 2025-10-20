@@ -1,0 +1,1996 @@
+═══════════════════════════════════════════════════════════════════════════════
+
+                    DOCUMENTAÇÃO DO PROJETO INTEGRADOR UC16
+              WATERYSOIL - PLATAFORMA DE MONITORAMENTO AGRÍCOLA INTELIGENTE
+
+═══════════════════════════════════════════════════════════════════════════════
+
+
+SUMÁRIO
+
+1. INTRODUÇÃO.....................................................................3
+2. VISÃO GERAL....................................................................4
+3. OBJETIVOS......................................................................5
+   3.1. Metodologia Utilizada.....................................................6
+4. FUNCIONALIDADES PRINCIPAIS.....................................................7
+5. TECNOLOGIAS UTILIZADAS........................................................12
+6. REQUISITOS E ARQUITETURA DO SISTEMA...........................................14
+   6.1. Código-Fonte e Padrões de Codificação....................................17
+   6.2. Plano de Testes..........................................................20
+   6.3. Instruções de Instalação e Deploy........................................21
+7. PLANEJAMENTO E CRONOGRAMA.....................................................23
+8. EQUIPE ENVOLVIDA..............................................................24
+9. CONTATO E PROPRIEDADE.........................................................25
+
+
+═══════════════════════════════════════════════════════════════════════════════
+
+
+1. INTRODUÇÃO
+
+O WaterySoil é uma plataforma web completa desenvolvida para revolucionar o
+monitoramento agrícola através da tecnologia IoT (Internet das Coisas). O sistema
+foi projetado para permitir que produtores rurais monitorem em tempo real as
+condições de suas plantações através de sensores Arduino conectados, otimizando
+o uso de recursos hídricos e maximizando a produtividade de forma sustentável.
+
+A plataforma oferece uma interface intuitiva e moderna onde os usuários podem
+gerenciar múltiplos ambientes de cultivo (como fazendas, estufas, campos),
+divididos em setores específicos, cada um equipado com módulos Arduino que
+coletam dados essenciais como umidade do solo, pH, temperatura e níveis de
+nutrientes.
+
+O projeto foi desenvolvido como parte do Projeto Integrador UC16 do SENAC,
+aplicando conceitos modernos de desenvolvimento web full-stack, arquitetura de
+software, segurança da informação e integração com dispositivos IoT.
+
+
+═══════════════════════════════════════════════════════════════════════════════
+
+
+2. VISÃO GERAL
+
+O WaterySoil é uma aplicação web baseada em arquitetura cliente-servidor,
+desenvolvida com tecnologias modernas e escaláveis. O sistema é composto por:
+
+FRONTEND (Cliente):
+- Aplicação Single Page Application (SPA) desenvolvida em React com TypeScript
+- Interface responsiva e moderna utilizando Tailwind CSS
+- Navegação fluida entre diferentes telas sem recarregamento de página
+- Visualização em tempo real de dados dos sensores
+- Dashboards interativos com gráficos e indicadores
+
+BACKEND (Servidor):
+- API RESTful desenvolvida em Node.js com Express
+- Arquitetura MVC (Model-View-Controller) para organização do código
+- Autenticação e autorização via JWT (JSON Web Tokens)
+- Integração com banco de dados MongoDB para persistência de dados
+- Endpoints seguros e documentados para todas as operações
+
+BANCO DE DADOS:
+- MongoDB (NoSQL) para armazenamento flexível e escalável
+- Schemas bem definidos com Mongoose ODM
+- Relacionamentos entre entidades (Usuários, Ambientes, Setores, Módulos)
+- Índices otimizados para consultas rápidas
+
+FUNCIONALIDADES PRINCIPAIS:
+- Sistema de autenticação completo (registro e login)
+- Gerenciamento de ambientes e setores de cultivo
+- Cadastro e monitoramento de módulos Arduino
+- Dashboard com visualização de dados em tempo real
+- Sistema de alertas e notificações
+- Agendamento de manutenções preventivas
+- Perfil de usuário personalizável com upload de avatar
+- Configurações de segurança e preferências
+
+
+═══════════════════════════════════════════════════════════════════════════════
+
+
+3. OBJETIVOS
+
+Os principais objetivos do sistema WaterySoil são:
+
+1. MODERNIZAR a agricultura através da implementação de tecnologias IoT,
+   permitindo que produtores rurais tenham acesso a dados precisos e em tempo
+   real sobre suas plantações.
+
+2. FACILITAR o monitoramento agrícola através de uma interface web intuitiva e
+   acessível de qualquer dispositivo com conexão à internet, eliminando a
+   necessidade de inspeções manuais constantes.
+
+3. MELHORAR a eficiência no uso de recursos hídricos através do monitoramento
+   preciso da umidade do solo, permitindo irrigação inteligente e reduzindo
+   desperdícios.
+
+4. OFERECER insights valiosos sobre as condições do solo (pH, temperatura,
+   nutrientes) para tomada de decisões mais informadas sobre manejo e cultivo.
+
+5. ADICIONAR funcionalidades de gestão como:
+   - Organização hierárquica de ambientes e setores
+   - Controle de múltiplos módulos Arduino por setor
+   - Sistema de alertas para condições anormais
+   - Agendamento de manutenções preventivas
+   - Histórico de dados para análise de tendências
+
+6. PROPORCIONAR escalabilidade, permitindo que o sistema cresça conforme as
+   necessidades do produtor, desde pequenas hortas até grandes fazendas.
+
+7. GARANTIR segurança dos dados através de autenticação robusta, criptografia
+   de senhas e controle de acesso baseado em usuário.
+
+8. PROMOVER sustentabilidade através do uso otimizado de recursos naturais e
+   redução de desperdícios.
+
+
+3.1. Metodologia Utilizada
+
+Para o desenvolvimento do projeto WaterySoil, foram utilizadas as seguintes
+metodologias e práticas:
+
+LEVANTAMENTO DE REQUISITOS:
+- Análise de necessidades do setor agrícola através de pesquisa de mercado
+- Identificação de problemas comuns no monitoramento manual de plantações
+- Definição de funcionalidades essenciais baseadas em casos de uso reais
+- Priorização de features utilizando método MoSCoW (Must have, Should have,
+  Could have, Won't have)
+- Questionários e entrevistas com potenciais usuários do sistema
+
+GESTÃO DO PROJETO:
+- Metodologia ágil com sprints de desenvolvimento
+- Divisão do projeto em módulos independentes (Autenticação, Ambientes, Setores,
+  Módulos Arduino, Dashboard)
+- Desenvolvimento iterativo com entregas incrementais
+- Versionamento de código utilizando Git
+- Documentação contínua durante o desenvolvimento
+- Reuniões de acompanhamento semanais
+
+DESIGN E PROTOTIPAGEM:
+- Criação de wireframes para definição da interface
+- Design system baseado em Tailwind CSS para consistência visual
+- Prototipagem de fluxos de usuário principais
+- Testes de usabilidade durante o desenvolvimento
+
+DESENVOLVIMENTO:
+- Arquitetura em camadas (Apresentação, Lógica de Negócio, Dados)
+- Padrão MVC no backend para separação de responsabilidades
+- Componentização no frontend para reutilização de código
+- API RESTful seguindo princípios REST
+- Validação de dados em múltiplas camadas (frontend e backend)
+
+
+═══════════════════════════════════════════════════════════════════════════════
+
+
+4. FUNCIONALIDADES PRINCIPAIS
+
+O sistema WaterySoil oferece um conjunto completo de funcionalidades para
+gerenciamento agrícola inteligente. Abaixo, descrevemos detalhadamente as
+principais funcionalidades do sistema, incluindo fluxogramas e manuais de
+usuário.
+
+
+4.1. SISTEMA DE AUTENTICAÇÃO
+
+FLUXOGRAMA DE AUTENTICAÇÃO:
+
+[Usuário] → [Tela Landing] → [Clica "Começar Agora"]
+                ↓
+         [Tela de Auth]
+                ↓
+         ┌──────┴──────┐
+         ↓             ↓
+    [Login]      [Registro]
+         ↓             ↓
+    [Valida]     [Cria Conta]
+         ↓             ↓
+    [Gera JWT]   [Gera JWT]
+         ↓             ↓
+         └──────┬──────┘
+                ↓
+         [Dashboard]
+
+
+MANUAL DO USUÁRIO - REGISTRO:
+
+Passo 1: Acesse a página inicial do WaterySoil
+- A tela de landing apresenta informações sobre o sistema
+- Clique no botão "Começar Agora" no topo da página
+
+Passo 2: Na tela de autenticação, clique em "Cadastre-se"
+- Por padrão, a tela mostra o formulário de login
+- Clique no link "Cadastre-se" na parte inferior
+
+Passo 3: Preencha o formulário de registro
+- Nome completo: Digite seu nome completo
+- Email: Digite um email válido (será usado para login)
+- Senha: Digite uma senha segura (mínimo 6 caracteres)
+
+Passo 4: Clique em "Criar Conta"
+- O sistema validará os dados
+- Se o email já estiver em uso, uma mensagem de erro será exibida
+- Caso contrário, sua conta será criada e você será redirecionado ao dashboard
+
+
+MANUAL DO USUÁRIO - LOGIN:
+
+Passo 1: Na tela de autenticação, preencha suas credenciais
+- Email: Digite o email cadastrado
+- Senha: Digite sua senha
+
+Passo 2: (Opcional) Marque "Lembrar de mim"
+- Esta opção mantém você conectado por mais tempo
+
+Passo 3: Clique em "Entrar"
+- O sistema validará suas credenciais
+- Se incorretas, uma mensagem de erro será exibida
+- Se corretas, você será redirecionado ao dashboard
+
+
+4.2. GERENCIAMENTO DE AMBIENTES
+
+FLUXOGRAMA DE GERENCIAMENTO DE AMBIENTES:
+
+[Dashboard] → [Clica ícone Home] → [Tela Ambientes]
+                                          ↓
+                                    [Lista Ambientes]
+                                          ↓
+                    ┌─────────────────────┼─────────────────────┐
+                    ↓                     ↓                     ↓
+              [Novo Ambiente]      [Editar Ambiente]    [Excluir Ambiente]
+                    ↓                     ↓                     ↓
+            [Preenche Form]        [Atualiza Dados]      [Confirma Exclusão]
+                    ↓                     ↓                     ↓
+              [Salva no BD]          [Salva no BD]        [Soft Delete]
+                    ↓                     ↓                     ↓
+                    └─────────────────────┴─────────────────────┘
+                                          ↓
+                                  [Atualiza Lista]
+
+
+MANUAL DO USUÁRIO - CRIAR AMBIENTE:
+
+Passo 1: No dashboard, clique no ícone de "Home" no cabeçalho
+- Você será direcionado para a tela de gerenciamento de ambientes
+
+Passo 2: Clique no botão "Novo" na seção de Ambientes
+- Um modal será aberto com o formulário
+
+Passo 3: Preencha os dados do ambiente
+- Nome: Digite um nome descritivo (ex: "Fazenda São João")
+- Descrição: (Opcional) Adicione detalhes sobre o ambiente
+
+Passo 4: Clique em "Salvar"
+- O ambiente será criado e aparecerá na lista
+- Você pode agora criar setores dentro deste ambiente
+
+
+MANUAL DO USUÁRIO - GERENCIAR SETORES:
+
+Passo 1: Selecione um ambiente clicando sobre ele
+- O ambiente selecionado ficará destacado em azul
+- Os setores deste ambiente aparecerão no painel direito
+
+Passo 2: Clique em "Novo" na seção de Setores
+- Um modal será aberto
+
+Passo 3: Preencha os dados do setor
+- Nome: Digite um nome (ex: "Setor A")
+- Descrição: (Opcional) Adicione detalhes
+
+Passo 4: Clique em "Salvar"
+- O setor será criado e associado ao ambiente selecionado
+
+
+═══════════════════════════════════════════════════════════════════════════════
+
+
+4.3. GERENCIAMENTO DE MÓDULOS ARDUINO
+
+FLUXOGRAMA DE CADASTRO DE MÓDULO:
+
+[Tela Módulos] → [Clica "Novo Módulo"]
+        ↓
+  [Formulário]
+        ↓
+  [Preenche Dados]
+        ↓
+  [Seleciona Setor]
+        ↓
+  [Valida IP único]
+        ↓
+  [Salva no BD]
+        ↓
+  [Status: offline]
+        ↓
+  [Arduino faz ping]
+        ↓
+  [Status: operational]
+
+
+MANUAL DO USUÁRIO - CADASTRAR MÓDULO:
+
+Passo 1: No dashboard, clique no ícone "Cpu" no cabeçalho
+- Você será direcionado para a tela de módulos Arduino
+
+Passo 2: Clique em "Novo Módulo"
+- Um formulário será exibido
+
+Passo 3: Preencha os dados do módulo
+- Nome: Nome identificador do módulo (ex: "Sensor Umidade 01")
+- Tipo: Selecione entre:
+  * Sensor: para dispositivos de coleta de dados
+  * Atuador: para dispositivos de ação (irrigação, ventilação)
+  * Controlador: para dispositivos de controle central
+  * Monitor: para dispositivos de monitoramento geral
+- Setor: Selecione o setor onde o módulo está instalado
+- Endereço IP: (Opcional) IP do dispositivo na rede (ex: 192.168.1.100)
+- Endereço MAC: (Opcional) MAC address do dispositivo
+- Versão do Firmware: (Opcional) Versão atual do firmware
+
+Passo 4: Clique em "Salvar"
+- O módulo será cadastrado com status "offline"
+- Quando o Arduino fizer ping, o status mudará para "operational"
+
+
+MANUAL DO USUÁRIO - MONITORAR MÓDULOS:
+
+Passo 1: Na tela de módulos, visualize a lista de dispositivos
+- Cada card mostra: nome, tipo, setor, status
+- Status pode ser:
+  * Operational (verde): funcionando normalmente
+  * Offline (cinza): sem comunicação
+  * Error (vermelho): com erro detectado
+  * Maintenance (amarelo): em manutenção
+
+Passo 2: Filtre módulos por setor ou status
+- Use os filtros no topo da página
+- Facilita localização de módulos específicos
+
+Passo 3: Edite ou exclua módulos conforme necessário
+- Clique no ícone de edição para atualizar dados
+- Clique no ícone de lixeira para excluir (com confirmação)
+
+
+4.4. DASHBOARD DE MONITORAMENTO
+
+MANUAL DO USUÁRIO - VISUALIZAR DADOS EM TEMPO REAL:
+
+Passo 1: No dashboard principal, visualize os cards de sensores
+- Cada card mostra um tipo de dado:
+  * Umidade do Solo (%)
+  * pH do Solo
+  * Temperatura (°C)
+  * Nutrientes NPK (%)
+- Os valores são atualizados automaticamente a cada 5 segundos
+
+Passo 2: Interprete os indicadores visuais
+- Status (ícone no canto superior direito):
+  * Ícone verde com check: valor ideal
+  * Ícone amarelo com triângulo: atenção necessária
+  * Ícone vermelho com triângulo: situação crítica
+- Tendência (seta pequena):
+  * Seta para cima (verde): valor subindo
+  * Seta para baixo (vermelha): valor descendo
+  * Círculo (cinza): valor estável
+- Badge inferior:
+  * "Ideal" (verde): tudo ok
+  * "Atenção" (amarelo): monitorar
+  * "Crítico" (vermelho): ação imediata necessária
+
+Passo 3: Verifique o status do sistema (painel lateral direito)
+- Sensores Online: mostra quantos sensores estão ativos
+- Sistema de Irrigação: status atual (Ativo/Inativo)
+- Próxima Manutenção: dias até a próxima manutenção programada
+
+Passo 4: Consulte alertas recentes
+- Lista de notificações importantes
+- Classificadas por tipo (sucesso/aviso/info)
+- Timestamp mostra quando ocorreu
+
+Passo 5: Use ações rápidas
+- Botões para ações comuns:
+  * Ativar Irrigação: liga o sistema de irrigação
+  * Ver Relatório: acessa relatórios detalhados
+  * Configurar Alertas: define limites de alerta
+
+
+4.5. AGENDAMENTO DE MANUTENÇÕES
+
+FLUXOGRAMA DE MANUTENÇÃO:
+
+[Tela Manutenção] → [Nova Manutenção]
+        ↓
+  [Preenche Form]
+        ↓
+  [Define Data/Hora]
+        ↓
+  [Seleciona Prioridade]
+        ↓
+  [Configura Recorrência?]
+        ↓
+  ┌─────┴─────┐
+  ↓           ↓
+[Sim]       [Não]
+  ↓           ↓
+[Define]   [Salva]
+[Frequência]  ↓
+  ↓      [Status: Pending]
+  └─────┬─────┘
+        ↓
+  [Executa Manutenção]
+        ↓
+  [Status: Completed]
+
+
+MANUAL DO USUÁRIO - CRIAR MANUTENÇÃO:
+
+Passo 1: Clique no ícone "Calendar" no cabeçalho
+- Você será direcionado para a tela de manutenções
+
+Passo 2: Clique em "Nova Manutenção"
+- Um formulário será exibido
+
+Passo 3: Preencha os dados obrigatórios
+- Título: Descrição curta da manutenção (ex: "Calibração de Sensores")
+- Descrição: Detalhes da tarefa a ser realizada
+- Setor: Selecione o setor onde a manutenção ocorrerá
+- Data e Hora: Quando a manutenção deve ocorrer
+
+Passo 4: Preencha dados opcionais
+- Módulo Arduino: Selecione se a manutenção é para um módulo específico
+- Prioridade: Escolha entre Baixa/Média/Alta/Crítica
+- Duração Estimada: Tempo previsto em minutos
+- Responsável: Nome da pessoa que executará a manutenção
+- Notas: Observações adicionais
+
+Passo 5: (Opcional) Configure recorrência
+- Marque "Manutenção Recorrente" se a tarefa se repete
+- Selecione frequência:
+  * Diária: todos os dias
+  * Semanal: toda semana
+  * Mensal: todo mês
+  * Trimestral: a cada 3 meses
+  * Anual: todo ano
+- Defina intervalo (ex: a cada 2 semanas)
+
+Passo 6: Clique em "Salvar"
+- A manutenção será agendada com status "Pendente"
+- Aparecerá na lista de manutenções
+
+
+═══════════════════════════════════════════════════════════════════════════════
+
+
+
+MANUAL DO USUÁRIO - GERENCIAR MANUTENÇÕES:
+
+Passo 1: Visualize a lista de manutenções
+- Ordenadas por data (próximas primeiro)
+- Cores indicam prioridade:
+  * Verde: baixa
+  * Azul: média
+  * Amarelo: alta
+  * Vermelho: crítica
+
+Passo 2: Filtre manutenções
+- Por setor: veja apenas de um setor específico
+- Por status: Pendente/Em Progresso/Concluída/Cancelada/Atrasada
+- Por prioridade: foque nas mais importantes
+
+Passo 3: Atualize status conforme execução
+- Clique em "Iniciar" para marcar como "Em Progresso"
+- Clique em "Concluir" quando finalizar
+- Adicione duração real e notas de execução
+
+Passo 4: Manutenções atrasadas
+- Sistema marca automaticamente como "Atrasada" se passou da data
+- Destaque visual em vermelho
+
+
+4.6. CONFIGURAÇÕES DE USUÁRIO
+
+MANUAL DO USUÁRIO - ATUALIZAR PERFIL:
+
+Passo 1: Clique no ícone "Settings" no cabeçalho
+- Você será direcionado para as configurações
+
+Passo 2: Na aba "Perfil", visualize seus dados atuais
+- Avatar exibido no topo
+- Formulário com dados pessoais e profissionais
+
+Passo 3: Atualize dados pessoais
+- Nome Completo: seu nome
+- Email: endereço de email (usado para login)
+- Telefone: número de contato
+- Data de Nascimento: sua data de nascimento
+- Endereço: endereço completo
+
+Passo 4: Atualize dados profissionais
+- Empresa: nome da empresa/fazenda
+- Cargo: sua função
+
+Passo 5: Para alterar o avatar
+- Clique no ícone de câmera sobre a foto
+- Selecione uma imagem do seu computador
+- Formatos aceitos: JPG, PNG, GIF
+- Tamanho máximo: 10MB
+- A preview será exibida imediatamente
+
+Passo 6: Clique em "Salvar Perfil"
+- Seus dados serão atualizados
+- Mensagem de sucesso será exibida
+
+
+MANUAL DO USUÁRIO - ALTERAR SENHA:
+
+Passo 1: Na aba "Segurança", localize "Alterar Senha"
+
+Passo 2: Preencha os três campos
+- Senha Atual: Digite sua senha atual (para confirmar identidade)
+- Nova Senha: Digite a nova senha
+  * Mínimo 8 caracteres
+  * Recomendado: letras maiúsculas, minúsculas, números e símbolos
+- Confirmar Nova Senha: Digite novamente a nova senha
+
+Passo 3: Use os ícones de olho para visualizar senhas
+- Clique no ícone para alternar entre mostrar/ocultar
+
+Passo 4: Clique em "Alterar Senha"
+- Sistema valida:
+  * Se senha atual está correta
+  * Se nova senha tem mínimo 8 caracteres
+  * Se nova senha é diferente da atual
+  * Se confirmação coincide com nova senha
+- Se tudo ok, senha é alterada
+- Mensagem de sucesso é exibida
+
+
+MANUAL DO USUÁRIO - CONFIGURAR SEGURANÇA:
+
+Passo 1: Na aba "Segurança", configure opções adicionais
+
+Passo 2: Autenticação de Dois Fatores (2FA)
+- Ative o toggle para habilitar
+- Adiciona camada extra de segurança
+- (Funcionalidade preparada para implementação futura)
+
+Passo 3: Notificações de Login
+- Ative para receber email quando alguém fizer login na sua conta
+- Ajuda a detectar acessos não autorizados
+
+Passo 4: Timeout da Sessão
+- Defina quanto tempo de inatividade antes de deslogar automaticamente
+- Opções: 15min, 30min, 1h, 2h, 8h
+
+Passo 5: Clique em "Salvar Segurança"
+
+
+MANUAL DO USUÁRIO - PREFERÊNCIAS:
+
+Passo 1: Na aba "Preferências", personalize a interface
+
+Passo 2: Tema
+- Claro: interface com fundo branco
+- Escuro: interface com fundo escuro (economia de bateria)
+- Automático: segue configuração do sistema operacional
+
+Passo 3: Idioma
+- Português (Brasil): PT-BR
+- English: EN
+- Español: ES
+
+Passo 4: Clique em "Salvar Preferências"
+
+
+MANUAL DO USUÁRIO - NOTIFICAÇÕES:
+
+Passo 1: Na aba "Notificações", configure alertas
+
+Passo 2: Ative/desative notificações gerais
+- Toggle principal liga/desliga todas as notificações
+
+Passo 3: Configure tipos específicos
+- Alertas de Manutenção: notificações sobre manutenções programadas e atrasadas
+- Alertas de Sensores: quando sensores detectam valores anômalos
+- Alertas do Sistema: status do sistema e módulos offline
+- Relatórios: receba relatórios periódicos por email
+
+Passo 4: Clique em "Salvar Notificações"
+
+
+═══════════════════════════════════════════════════════════════════════════════
+
+
+5. TECNOLOGIAS UTILIZADAS
+
+O projeto WaterySoil foi desenvolvido utilizando um stack tecnológico moderno e
+robusto, garantindo performance, escalabilidade e manutenibilidade.
+
+
+FRONTEND:
+
+• React 18.3.1
+  - Biblioteca JavaScript para construção de interfaces de usuário
+  - Componentização e reutilização de código
+  - Virtual DOM para performance otimizada
+  - Hooks para gerenciamento de estado (useState, useEffect, useContext)
+  - Context API para estado global (AuthContext)
+
+• TypeScript
+  - Superset do JavaScript com tipagem estática
+  - Maior segurança e previsibilidade do código
+  - Autocomplete e IntelliSense melhorados
+  - Detecção de erros em tempo de desenvolvimento
+  - Interfaces e tipos customizados para todas as entidades
+
+• Vite
+  - Build tool moderna e extremamente rápida
+  - Hot Module Replacement (HMR) instantâneo
+  - Otimização automática de bundle
+  - Suporte nativo a TypeScript e JSX
+  - Tempo de build reduzido comparado a Webpack
+
+• Tailwind CSS 3.4.17
+  - Framework CSS utility-first
+  - Design system consistente
+  - Responsividade facilitada com breakpoints
+  - Customização através de tailwind.config.js
+  - Purge automático de CSS não utilizado
+  - Classes utilitárias para gradientes, sombras, animações
+
+• Lucide React 0.344.0
+  - Biblioteca de ícones moderna e leve
+  - Ícones SVG otimizados
+  - Fácil customização de tamanho e cor
+  - Mais de 1000 ícones disponíveis
+  - Tree-shaking automático (apenas ícones usados são incluídos)
+
+
+BACKEND:
+
+• Node.js
+  - Runtime JavaScript server-side
+  - Event-driven e non-blocking I/O
+  - Ecossistema NPM rico com milhares de pacotes
+  - Performance e escalabilidade
+  - Mesma linguagem no frontend e backend
+
+• Express 5.1.0
+  - Framework web minimalista e flexível
+  - Roteamento robusto e intuitivo
+  - Sistema de middleware poderoso
+  - Suporte a múltiplos template engines
+  - Grande comunidade e documentação extensa
+
+• MongoDB 6.20.0
+  - Banco de dados NoSQL orientado a documentos
+  - Esquema flexível (schemaless)
+  - Escalabilidade horizontal com sharding
+  - Consultas rápidas e eficientes
+  - Suporte a índices complexos e geoespaciais
+  - Agregações poderosas para análise de dados
+
+• Mongoose 8.18.2
+  - ODM (Object Data Modeling) para MongoDB
+  - Schemas e validação de dados
+  - Middleware e hooks (pre/post save, update, etc)
+  - Queries type-safe e chainable
+  - Relacionamentos entre documentos (populate)
+  - Validadores customizados
+
+• JSON Web Token (jsonwebtoken) 9.0.2
+  - Autenticação stateless
+  - Tokens assinados e verificáveis
+  - Payload customizável com dados do usuário
+  - Expiração configurável (24h no projeto)
+  - Seguro e amplamente adotado
+
+• Bcrypt.js 3.0.2
+  - Hashing de senhas com algoritmo bcrypt
+  - Salt rounds configurável (8 no projeto)
+  - Proteção contra rainbow tables e brute force
+  - Comparação segura de hashes
+  - Resistente a ataques de timing
+
+• Multer 2.0.2
+  - Middleware para upload de arquivos
+  - Suporte a multipart/form-data
+  - Validação de tipo de arquivo
+  - Armazenamento em memória (usado para avatares)
+  - Limite de tamanho configurável (10MB)
+
+• CORS 2.8.5
+  - Cross-Origin Resource Sharing
+  - Configuração de origens permitidas
+  - Segurança em requisições cross-domain
+  - Headers customizáveis
+
+• Dotenv 17.2.2
+  - Gerenciamento de variáveis de ambiente
+  - Separação de configuração do código
+  - Segurança de credenciais (não versionadas)
+  - Diferentes ambientes (dev, prod, test)
+
+
+FERRAMENTAS DE DESENVOLVIMENTO:
+
+• ESLint
+  - Linter para JavaScript/TypeScript
+  - Detecção de problemas no código
+  - Padronização de estilo
+  - Regras customizáveis
+  - Integração com IDEs
+
+• Nodemon 3.1.10
+  - Auto-restart do servidor em desenvolvimento
+  - Watch de arquivos
+  - Configuração flexível
+  - Aumenta produtividade no desenvolvimento
+
+• PostCSS
+  - Processador de CSS
+  - Autoprefixer para compatibilidade entre navegadores
+  - Otimizações de CSS
+  - Minificação em produção
+
+• Git
+  - Controle de versão distribuído
+  - Branching e merging
+  - Histórico completo de mudanças
+  - Colaboração em equipe
+  - Integração com GitHub/GitLab
+
+
+OUTRAS TECNOLOGIAS E CONCEITOS:
+
+• RESTful API
+  - Arquitetura de comunicação cliente-servidor
+  - Métodos HTTP (GET, POST, PUT, DELETE)
+  - Stateless (sem estado no servidor)
+  - Recursos bem definidos e hierárquicos
+  - Respostas padronizadas em JSON
+
+• JSON (JavaScript Object Notation)
+  - Formato de troca de dados
+  - Leve e legível por humanos
+  - Suporte nativo em JavaScript
+  - Parsing rápido
+
+• Base64
+  - Codificação de imagens em texto
+  - Armazenamento de avatares no banco de dados
+  - Transferência de dados binários via JSON
+  - Formato: data:image/png;base64,iVBORw0KG...
+
+• LocalStorage
+  - Armazenamento local no navegador
+  - Persistência de token JWT
+  - Dados do usuário logado
+  - Preferências do usuário
+
+• Async/Await
+  - Programação assíncrona moderna
+  - Código mais limpo e legível
+  - Tratamento de erros com try/catch
+  - Substituição de callbacks e promises encadeadas
+
+
+═══════════════════════════════════════════════════════════════════════════════
+
+
+6. REQUISITOS E ARQUITETURA DO SISTEMA
+
+
+6.1. REQUISITOS DE SEGURANÇA
+
+AUTENTICAÇÃO:
+- Sistema de registro e login com validação de credenciais
+- Tokens JWT com expiração de 24 horas
+- Refresh de token automático (preparado para implementação)
+- Logout com limpeza de dados locais
+- Middleware de autenticação em todas as rotas protegidas
+
+AUTORIZAÇÃO:
+- Verificação de propriedade de recursos (usuário só acessa seus próprios dados)
+- Validação de token em cada requisição ao backend
+- Controle de acesso baseado em usuário (user_id)
+- Isolamento de dados entre usuários
+
+PROTEÇÃO DE DADOS:
+- Senhas criptografadas com bcrypt (8 rounds de salt)
+- Senhas nunca retornadas nas respostas da API
+- Validação de senha atual antes de alteração
+- Requisitos de senha forte (mínimo 6 caracteres)
+- Avatares armazenados como base64 no banco de dados
+
+SEGURANÇA DE COMUNICAÇÃO:
+- CORS configurado para origens permitidas
+- Headers de segurança
+- Validação de entrada em todas as rotas
+- Sanitização de dados antes de salvar no banco
+- Limite de tamanho de requisições (10MB)
+
+PROTEÇÃO CONTRA ATAQUES:
+- Validação de tipos de dados
+- Prevenção de SQL/NoSQL Injection através do Mongoose
+- Rate limiting (preparado para implementação)
+- Validação de tamanho de uploads
+- Validação de formatos de email, IP e MAC address
+
+
+6.2. REQUISITOS NÃO-FUNCIONAIS
+
+DESEMPENHO:
+- Tempo de resposta da API < 500ms para operações simples
+- Carregamento inicial da aplicação < 3 segundos
+- Atualização de dados em tempo real (simulado a cada 5 segundos)
+- Índices no banco de dados para consultas otimizadas
+- Lazy loading de componentes React
+
+USABILIDADE:
+- Interface intuitiva e responsiva
+- Feedback visual para todas as ações do usuário
+- Mensagens de erro claras e acionáveis
+- Loading states durante operações assíncronas
+- Confirmação antes de ações destrutivas
+- Navegação consistente e previsível
+
+ESCALABILIDADE:
+- Arquitetura preparada para crescimento horizontal
+- Soft delete para preservar dados históricos
+- Paginação preparada para grandes volumes de dados
+- Estrutura modular para adição de novas funcionalidades
+- Separação clara entre frontend e backend
+
+CONFIABILIDADE:
+- Tratamento de erros em todas as camadas
+- Logs de erros no servidor
+- Validação de dados em múltiplas camadas
+- Fallbacks para falhas de comunicação
+- Mensagens de erro amigáveis ao usuário
+
+MANUTENIBILIDADE:
+- Código organizado em módulos
+- Comentários em funções complexas
+- Nomenclatura clara e consistente
+- Separação de responsabilidades (MVC)
+- Documentação inline do código
+- Estrutura de pastas padronizada
+
+COMPATIBILIDADE:
+- Suporte a navegadores modernos (Chrome, Firefox, Safari, Edge)
+- Design responsivo para desktop, tablet e mobile
+- API RESTful compatível com qualquer cliente HTTP
+- Breakpoints: mobile (< 640px), tablet (640-1024px), desktop (> 1024px)
+
+
+6.3. DIAGRAMA DE ARQUITETURA
+
+ARQUITETURA CLIENTE-SERVIDOR (3 CAMADAS):
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                     CAMADA DE APRESENTAÇÃO (Frontend)                    │
+├─────────────────────────────────────────────────────────────────────────┤
+│  React + TypeScript + Tailwind CSS + Vite                               │
+│                                                                          │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐                 │
+│  │   Landing    │  │     Auth     │  │   Dashboard  │                 │
+│  │     Page     │  │  (Login/Reg) │  │   (Main)     │                 │
+│  └──────────────┘  └──────────────┘  └──────────────┘                 │
+│                                                                          │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐                 │
+│  │ Environment  │  │   Arduino    │  │ Maintenance  │                 │
+│  │   Manager    │  │   Modules    │  │   Schedule   │                 │
+│  └──────────────┘  └──────────────┘  └──────────────┘                 │
+│                                                                          │
+│  ┌──────────────┐  ┌──────────────────────────────────────┐           │
+│  │     User     │  │         Services (API Client)         │           │
+│  │   Settings   │  │  - authService                        │           │
+│  └──────────────┘  │  - environmentService                 │           │
+│                     │  - sectorService                      │           │
+│                     │  - arduinoModuleService               │           │
+│                     │  - maintenanceScheduleService         │           │
+│                     └──────────────────────────────────────┘           │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    │ HTTP/HTTPS
+                                    │ REST API (JSON)
+                                    │ Authorization: Bearer <JWT>
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                 CAMADA DE LÓGICA DE NEGÓCIO (Backend)                    │
+├─────────────────────────────────────────────────────────────────────────┤
+│  Node.js + Express                                                       │
+│                                                                          │
+│  ┌────────────────────────────────────────────────────────────────┐    │
+│  │                          ROUTES                                 │    │
+│  │  /api/v1/users                                                  │    │
+│  │  /api/v1/environments                                           │    │
+│  │  /api/v1/sectors                                                │    │
+│  │  /api/v1/arduino-modules                                        │    │
+│  │  /api/v1/maintenance-schedules                                  │    │
+│  └────────────────────────────────────────────────────────────────┘    │
+│                                    │                                     │
+│  ┌────────────────────────────────────────────────────────────────┐    │
+│  │                        MIDDLEWARE                               │    │
+│  │  - CORS (Cross-Origin Resource Sharing)                        │    │
+│  │  - JSON Parser (body-parser)                                    │    │
+│  │  - Authentication (JWT Verification)                            │    │
+│  │  - File Upload (Multer)                                         │    │
+│  │  - Error Handling                                               │    │
+│  └────────────────────────────────────────────────────────────────┘    │
+│                                    │                                     │
+│  ┌────────────────────────────────────────────────────────────────┐    │
+│  │                       CONTROLLERS                               │    │
+│  │  - userController (register, login, profile, avatar, password)  │    │
+│  │  - environmentController (CRUD operations)                      │    │
+│  │  - sectorController (CRUD operations)                           │    │
+│  │  - arduinoModuleController (CRUD, ping)                         │    │
+│  │  - maintenanceScheduleController (CRUD, status update)          │    │
+│  └────────────────────────────────────────────────────────────────┘    │
+│                                    │                                     │
+│  ┌────────────────────────────────────────────────────────────────┐    │
+│  │                          MODELS                                 │    │
+│  │  - User (Mongoose Schema)                                       │    │
+│  │  - Environment (Mongoose Schema)                                │    │
+│  │  - Sector (Mongoose Schema)                                     │    │
+│  │  - ArduinoModule (Mongoose Schema)                              │    │
+│  │  - MaintenanceSchedule (Mongoose Schema)                        │    │
+│  └────────────────────────────────────────────────────────────────┘    │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    │ Mongoose ODM
+                                    │ MongoDB Driver
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│                      CAMADA DE DADOS (Database)                          │
+├─────────────────────────────────────────────────────────────────────────┤
+│  MongoDB (NoSQL Document Database)                                       │
+│                                                                          │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐                 │
+│  │    users     │  │ environments │  │   sectors    │                 │
+│  │  collection  │  │  collection  │  │  collection  │                 │
+│  │              │  │              │  │              │                 │
+│  │ - _id        │  │ - _id        │  │ - _id        │                 │
+│  │ - name       │  │ - name       │  │ - name       │                 │
+│  │ - email      │  │ - description│  │ - description│                 │
+│  │ - password   │  │ - user_id    │  │ - environment│                 │
+│  │ - phone      │  │ - is_active  │  │ - user_id    │                 │
+│  │ - avatar     │  │ - createdAt  │  │ - area_size  │                 │
+│  │ - ...        │  │ - updatedAt  │  │ - location   │                 │
+│  └──────────────┘  └──────────────┘  └──────────────┘                 │
+│                                                                          │
+│  ┌──────────────┐  ┌──────────────┐                                    │
+│  │arduino_modules│ │ maintenance_ │                                    │
+│  │  collection  │  │  schedules   │                                    │
+│  │              │  │  collection  │                                    │
+│  │ - _id        │  │ - _id        │                                    │
+│  │ - name       │  │ - title      │                                    │
+│  │ - type       │  │ - sector_id  │                                    │
+│  │ - sector_id  │  │ - module_id  │                                    │
+│  │ - status     │  │ - status     │                                    │
+│  │ - ip_address │  │ - priority   │                                    │
+│  │ - ...        │  │ - ...        │                                    │
+│  └──────────────┘  └──────────────┘                                    │
+└─────────────────────────────────────────────────────────────────────────┘
+
+
+6.4. MODELO DE DADOS (DIAGRAMA ER)
+
+RELACIONAMENTOS ENTRE ENTIDADES:
+
+User (1) ──────< (N) Environment
+  │
+  ├──────< (N) Sector
+  │
+  ├──────< (N) ArduinoModule
+  │
+  └──────< (N) MaintenanceSchedule
+
+Environment (1) ──────< (N) Sector
+
+Sector (1) ──────< (N) ArduinoModule
+  │
+  └──────< (N) MaintenanceSchedule
+
+ArduinoModule (1) ──────< (N) MaintenanceSchedule (opcional)
+
+
+ENTIDADES DETALHADAS:
+
+┌─────────────────────────────────────┐
+│              USER                   │
+├─────────────────────────────────────┤
+│ _id: ObjectId (PK)                  │
+│ name: String (required)             │
+│ email: String (required, unique)    │
+│ password: String (required, hashed) │
+│ phone: String                       │
+│ address: String                     │
+│ birthDate: String                   │
+│ company: String                     │
+│ position: String                    │
+│ avatar: String (base64)             │
+│ createdAt: Date (auto)              │
+│ updatedAt: Date (auto)              │
+└─────────────────────────────────────┘
+
+┌─────────────────────────────────────┐
+│          ENVIRONMENT                │
+├─────────────────────────────────────┤
+│ _id: ObjectId (PK)                  │
+│ name: String (required)             │
+│ description: String                 │
+│ user_id: ObjectId (FK → User)       │
+│ is_active: Boolean (default: true)  │
+│ createdAt: Date (auto)              │
+│ updatedAt: Date (auto)              │
+│                                     │
+│ Unique Index: [name, user_id]       │
+└─────────────────────────────────────┘
+
+┌─────────────────────────────────────┐
+│             SECTOR                  │
+├─────────────────────────────────────┤
+│ _id: ObjectId (PK)                  │
+│ name: String (required)             │
+│ description: String                 │
+│ environment_id: ObjectId (FK)       │
+│ user_id: ObjectId (FK → User)       │
+│ is_active: Boolean (default: true)  │
+│ area_size: Number                   │
+│ location: Object                    │
+│   - latitude: Number                │
+│   - longitude: Number               │
+│ createdAt: Date (auto)              │
+│ updatedAt: Date (auto)              │
+│                                     │
+│ Unique Index: [name, environment_id]│
+└─────────────────────────────────────┘
+
+┌─────────────────────────────────────┐
+│         ARDUINO_MODULE              │
+├─────────────────────────────────────┤
+│ _id: ObjectId (PK)                  │
+│ name: String (required)             │
+│ module_type: String (required)      │
+│   - sensor                          │
+│   - actuator                        │
+│   - controller                      │
+│   - monitor                         │
+│ sector_id: ObjectId (FK → Sector)   │
+│ user_id: ObjectId (FK → User)       │
+│ status: String (default: offline)   │
+│   - operational                     │
+│   - offline                         │
+│   - error                           │
+│   - maintenance                     │
+│ ip_address: String (unique)         │
+│ mac_address: String                 │
+│ last_ping: Date                     │
+│ configuration: Mixed (JSON)         │
+│ firmware_version: String            │
+│ is_active: Boolean (default: true)  │
+│ createdAt: Date (auto)              │
+│ updatedAt: Date (auto)              │
+│                                     │
+│ Validation: IP format, MAC format   │
+└─────────────────────────────────────┘
+
+┌─────────────────────────────────────┐
+│      MAINTENANCE_SCHEDULE           │
+├─────────────────────────────────────┤
+│ _id: ObjectId (PK)                  │
+│ title: String (required)            │
+│ description: String                 │
+│ sector_id: ObjectId (FK → Sector)   │
+│ arduino_module_id: ObjectId (FK)    │
+│ user_id: ObjectId (FK → User)       │
+│ scheduled_date: Date (required)     │
+│ completed_date: Date                │
+│ status: String (default: pending)   │
+│   - pending                         │
+│   - in_progress                     │
+│   - completed                       │
+│   - cancelled                       │
+│   - overdue (auto)                  │
+│ priority: String (default: medium)  │
+│   - low                             │
+│   - medium                          │
+│   - high                            │
+│   - critical                        │
+│ estimated_duration: Number (min)    │
+│ actual_duration: Number (min)       │
+│ assigned_to: String                 │
+│ notes: String                       │
+│ recurring: Object                   │
+│   - enabled: Boolean                │
+│   - frequency: String               │
+│   - interval: Number                │
+│ createdAt: Date (auto)              │
+│ updatedAt: Date (auto)              │
+│                                     │
+│ Pre-find Hook: Auto-update overdue  │
+└─────────────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════════════════════
+
+
+
+6.5. CÓDIGO-FONTE E PADRÕES DE CODIFICAÇÃO
+
+
+ESTRUTURA DE DIRETÓRIOS:
+
+WaterySoil/
+├── backend/                          # Servidor Node.js/Express
+│   ├── config/                       # Configurações
+│   │   └── database.js               # Conexão MongoDB
+│   ├── controllers/                  # Controladores (lógica de negócio)
+│   │   ├── userController.js
+│   │   ├── environmentController.js
+│   │   ├── sectorController.js
+│   │   ├── arduinoModuleController.js
+│   │   └── maintenanceScheduleController.js
+│   ├── middleware/                   # Middlewares
+│   │   └── auth.js                   # Autenticação JWT
+│   ├── models/                       # Modelos Mongoose
+│   │   ├── User.js
+│   │   ├── Environment.js
+│   │   ├── Sector.js
+│   │   ├── ArduinoModule.js
+│   │   └── MaintenanceSchedule.js
+│   ├── routes/                       # Rotas da API
+│   │   ├── userRoutes.js
+│   │   ├── environmentRoutes.js
+│   │   ├── sectorRoutes.js
+│   │   ├── arduinoModuleRoutes.js
+│   │   └── maintenanceScheduleRoutes.js
+│   ├── uploads/                      # Arquivos estáticos
+│   ├── .env                          # Variáveis de ambiente
+│   ├── package.json                  # Dependências backend
+│   └── server.js                     # Ponto de entrada
+│
+├── src/                              # Frontend React
+│   ├── components/                   # Componentes React
+│   │   ├── Auth.tsx                  # Login/Registro
+│   │   ├── Dashboard.tsx             # Dashboard principal
+│   │   ├── EnvironmentManager.tsx    # Gerenciamento de ambientes
+│   │   ├── LandingPage.tsx           # Página inicial
+│   │   └── UserSettings.tsx          # Configurações de usuário
+│   ├── contexts/                     # Contextos React
+│   │   └── AuthContext.tsx           # Contexto de autenticação
+│   ├── services/                     # Serviços de API
+│   │   ├── apiService.ts             # Cliente HTTP base
+│   │   ├── authService.ts            # Serviços de autenticação
+│   │   └── environmentService.ts     # Serviços de ambientes
+│   ├── types/                        # Tipos TypeScript
+│   │   └── auth.ts                   # Tipos de autenticação
+│   ├── App.tsx                       # Componente raiz
+│   ├── main.tsx                      # Ponto de entrada
+│   └── index.css                     # Estilos globais
+│
+├── public/                           # Arquivos públicos
+│   └── images/                       # Imagens estáticas
+├── .env                              # Variáveis de ambiente frontend
+├── package.json                      # Dependências frontend
+├── tailwind.config.js                # Configuração Tailwind
+├── tsconfig.json                     # Configuração TypeScript
+├── vite.config.ts                    # Configuração Vite
+└── README.md                         # Documentação do projeto
+
+
+PADRÕES DE CODIFICAÇÃO:
+
+NOMENCLATURA:
+- Variáveis e funções: camelCase (ex: getUserProfile, isActive)
+- Classes e componentes: PascalCase (ex: UserController, Dashboard)
+- Constantes: UPPER_SNAKE_CASE (ex: API_BASE_URL, MAX_FILE_SIZE)
+- Arquivos: camelCase para JS/TS, PascalCase para componentes React
+- Rotas da API: kebab-case (ex: /arduino-modules, /maintenance-schedules)
+
+ORGANIZAÇÃO DO CÓDIGO:
+- Um componente/classe por arquivo
+- Imports organizados: bibliotecas externas, internas, tipos, estilos
+- Exports no final do arquivo
+- Funções auxiliares antes da função principal
+- Comentários para lógica complexa
+
+BACKEND (Node.js/Express):
+- Padrão MVC (Model-View-Controller)
+- Controllers: funções assíncronas com try/catch
+- Models: Mongoose schemas com validações
+- Routes: definição de endpoints e middlewares
+- Middleware de autenticação em rotas protegidas
+- Respostas padronizadas: { success, message, data, error }
+
+FRONTEND (React/TypeScript):
+- Componentes funcionais com hooks
+- Props tipadas com interfaces TypeScript
+- Estado local com useState, global com Context API
+- Efeitos colaterais com useEffect
+- Componentes reutilizáveis e modulares
+- Tailwind CSS para estilização
+
+
+DOCUMENTAÇÃO DA API:
+
+BASE URL: http://localhost:3000/api/v1
+
+AUTENTICAÇÃO:
+Todas as rotas protegidas requerem header:
+Authorization: Bearer <JWT_TOKEN>
+
+
+ENDPOINTS - USERS (/api/v1/users):
+
+POST /register
+- Descrição: Registra novo usuário
+- Body: { name, email, password }
+- Resposta: { success, message, token, user }
+- Status: 201 Created
+
+POST /login
+- Descrição: Autentica usuário
+- Body: { email, password }
+- Resposta: { success, message, token, user }
+- Status: 200 OK
+
+GET /profile
+- Descrição: Obtém perfil do usuário logado
+- Headers: Authorization Bearer <token>
+- Resposta: { success, user }
+- Status: 200 OK
+
+PUT /profile
+- Descrição: Atualiza perfil do usuário
+- Headers: Authorization Bearer <token>
+- Body: { name, phone, address, birthDate, company, position }
+- Resposta: { success, message, user }
+- Status: 200 OK
+
+POST /upload-avatar
+- Descrição: Upload de avatar (base64)
+- Headers: Authorization Bearer <token>
+- Body: { avatar: "data:image/png;base64,..." }
+- Resposta: { success, message, avatarUrl }
+- Status: 200 OK
+
+PUT /change-password
+- Descrição: Altera senha do usuário
+- Headers: Authorization Bearer <token>
+- Body: { currentPassword, newPassword }
+- Resposta: { success, message }
+- Status: 200 OK
+
+
+ENDPOINTS - ENVIRONMENTS (/api/v1/environments):
+
+GET /
+- Descrição: Lista todos os ambientes do usuário
+- Headers: Authorization Bearer <token>
+- Resposta: { success, environments: [...] }
+- Status: 200 OK
+
+GET /:id
+- Descrição: Obtém um ambiente específico
+- Headers: Authorization Bearer <token>
+- Params: id (ObjectId)
+- Resposta: { success, environment: {...} }
+- Status: 200 OK
+
+POST /
+- Descrição: Cria novo ambiente
+- Headers: Authorization Bearer <token>
+- Body: { name, description }
+- Resposta: { success, message, environment }
+- Status: 201 Created
+
+PUT /:id
+- Descrição: Atualiza ambiente
+- Headers: Authorization Bearer <token>
+- Params: id (ObjectId)
+- Body: { name, description }
+- Resposta: { success, message, environment }
+- Status: 200 OK
+
+DELETE /:id
+- Descrição: Exclui ambiente (soft delete)
+- Headers: Authorization Bearer <token>
+- Params: id (ObjectId)
+- Resposta: { success, message }
+- Status: 200 OK
+
+
+ENDPOINTS - SECTORS (/api/v1/sectors):
+
+GET /
+- Descrição: Lista setores (filtro opcional por environment_id)
+- Headers: Authorization Bearer <token>
+- Query: ?environment_id=<id>
+- Resposta: { success, sectors: [...] }
+- Status: 200 OK
+
+GET /:id
+- Descrição: Obtém um setor específico
+- Headers: Authorization Bearer <token>
+- Params: id (ObjectId)
+- Resposta: { success, sector: {...} }
+- Status: 200 OK
+
+POST /
+- Descrição: Cria novo setor
+- Headers: Authorization Bearer <token>
+- Body: { name, description, environment_id, area_size, location }
+- Resposta: { success, message, sector }
+- Status: 201 Created
+
+PUT /:id
+- Descrição: Atualiza setor
+- Headers: Authorization Bearer <token>
+- Params: id (ObjectId)
+- Body: { name, description, area_size, location }
+- Resposta: { success, message, sector }
+- Status: 200 OK
+
+DELETE /:id
+- Descrição: Exclui setor (soft delete)
+- Headers: Authorization Bearer <token>
+- Params: id (ObjectId)
+- Resposta: { success, message }
+- Status: 200 OK
+
+
+ENDPOINTS - ARDUINO MODULES (/api/v1/arduino-modules):
+
+GET /
+- Descrição: Lista módulos (filtros opcionais)
+- Headers: Authorization Bearer <token>
+- Query: ?sector_id=<id>&status=<status>
+- Resposta: { success, modules: [...] }
+- Status: 200 OK
+
+GET /:id
+- Descrição: Obtém um módulo específico
+- Headers: Authorization Bearer <token>
+- Params: id (ObjectId)
+- Resposta: { success, module: {...} }
+- Status: 200 OK
+
+POST /
+- Descrição: Cria novo módulo Arduino
+- Headers: Authorization Bearer <token>
+- Body: { name, module_type, sector_id, ip_address, mac_address, firmware_version }
+- Resposta: { success, message, module }
+- Status: 201 Created
+
+PUT /:id
+- Descrição: Atualiza módulo
+- Headers: Authorization Bearer <token>
+- Params: id (ObjectId)
+- Body: { name, module_type, status, ip_address, mac_address, firmware_version }
+- Resposta: { success, message, module }
+- Status: 200 OK
+
+DELETE /:id
+- Descrição: Exclui módulo (soft delete)
+- Headers: Authorization Bearer <token>
+- Params: id (ObjectId)
+- Resposta: { success, message }
+- Status: 200 OK
+
+POST /:id/ping
+- Descrição: Arduino reporta status (atualiza last_ping)
+- Params: id (ObjectId)
+- Resposta: { success, message }
+- Status: 200 OK
+
+
+ENDPOINTS - MAINTENANCE SCHEDULES (/api/v1/maintenance-schedules):
+
+GET /
+- Descrição: Lista manutenções (filtros opcionais)
+- Headers: Authorization Bearer <token>
+- Query: ?sector_id=<id>&status=<status>&priority=<priority>
+- Resposta: { success, schedules: [...] }
+- Status: 200 OK
+
+GET /:id
+- Descrição: Obtém uma manutenção específica
+- Headers: Authorization Bearer <token>
+- Params: id (ObjectId)
+- Resposta: { success, schedule: {...} }
+- Status: 200 OK
+
+POST /
+- Descrição: Cria nova manutenção
+- Headers: Authorization Bearer <token>
+- Body: { title, description, sector_id, arduino_module_id, scheduled_date,
+         priority, estimated_duration, assigned_to, recurring }
+- Resposta: { success, message, schedule }
+- Status: 201 Created
+
+PUT /:id
+- Descrição: Atualiza manutenção
+- Headers: Authorization Bearer <token>
+- Params: id (ObjectId)
+- Body: { title, description, scheduled_date, status, priority, actual_duration, notes }
+- Resposta: { success, message, schedule }
+- Status: 200 OK
+
+DELETE /:id
+- Descrição: Exclui manutenção
+- Headers: Authorization Bearer <token>
+- Params: id (ObjectId)
+- Resposta: { success, message }
+- Status: 200 OK
+
+
+═══════════════════════════════════════════════════════════════════════════════
+
+
+
+6.6. PLANO DE TESTES
+
+
+ESTRATÉGIA DE TESTES:
+
+O projeto WaterySoil utiliza uma abordagem de testes em múltiplas camadas para
+garantir a qualidade e confiabilidade do sistema.
+
+
+TIPOS DE TESTES:
+
+1. TESTES UNITÁRIOS
+   - Objetivo: Testar funções e componentes isoladamente
+   - Ferramentas: Jest (preparado para implementação)
+   - Cobertura: Controllers, Services, Utilitários
+   - Exemplo: Testar função de validação de email, hash de senha
+
+2. TESTES DE INTEGRAÇÃO
+   - Objetivo: Testar integração entre componentes
+   - Ferramentas: Supertest para API (preparado)
+   - Cobertura: Rotas da API, Integração com banco de dados
+   - Exemplo: Testar fluxo completo de registro de usuário
+
+3. TESTES DE INTERFACE (E2E)
+   - Objetivo: Testar fluxos completos do usuário
+   - Ferramentas: Cypress ou Playwright (preparado)
+   - Cobertura: Fluxos críticos (login, cadastro, CRUD)
+   - Exemplo: Testar fluxo de login até visualização do dashboard
+
+4. TESTES MANUAIS
+   - Objetivo: Validar usabilidade e experiência do usuário
+   - Responsável: Equipe de desenvolvimento e usuários beta
+   - Cobertura: Todas as funcionalidades
+   - Checklist: Navegação, responsividade, mensagens de erro
+
+
+CASOS DE TESTE PRINCIPAIS:
+
+AUTENTICAÇÃO:
+✓ Registro com dados válidos
+✓ Registro com email duplicado (deve falhar)
+✓ Login com credenciais corretas
+✓ Login com credenciais incorretas (deve falhar)
+✓ Acesso a rota protegida sem token (deve falhar)
+✓ Acesso a rota protegida com token válido
+✓ Logout e limpeza de dados
+
+GERENCIAMENTO DE AMBIENTES:
+✓ Criar ambiente com nome único
+✓ Criar ambiente com nome duplicado (deve falhar)
+✓ Listar ambientes do usuário
+✓ Editar ambiente existente
+✓ Excluir ambiente (soft delete)
+✓ Usuário não pode acessar ambientes de outros usuários
+
+GERENCIAMENTO DE SETORES:
+✓ Criar setor vinculado a ambiente
+✓ Listar setores filtrados por ambiente
+✓ Editar setor existente
+✓ Excluir setor (soft delete)
+✓ Validação de nome único dentro do ambiente
+
+GERENCIAMENTO DE MÓDULOS ARDUINO:
+✓ Cadastrar módulo com IP único
+✓ Cadastrar módulo com IP duplicado (deve falhar)
+✓ Atualizar status do módulo via ping
+✓ Listar módulos filtrados por setor
+✓ Editar configurações do módulo
+✓ Excluir módulo (soft delete)
+
+AGENDAMENTO DE MANUTENÇÕES:
+✓ Criar manutenção com dados válidos
+✓ Listar manutenções filtradas por setor/status/prioridade
+✓ Atualizar status de manutenção
+✓ Sistema marca automaticamente manutenções atrasadas
+✓ Criar manutenção recorrente
+✓ Excluir manutenção
+
+PERFIL DE USUÁRIO:
+✓ Atualizar dados do perfil
+✓ Upload de avatar (base64)
+✓ Alterar senha com senha atual correta
+✓ Alterar senha com senha atual incorreta (deve falhar)
+✓ Validação de senha forte
+
+
+TESTES DE SEGURANÇA:
+✓ Senhas são criptografadas no banco
+✓ Senhas não são retornadas nas respostas da API
+✓ Tokens JWT expiram após 24 horas
+✓ Validação de formato de email
+✓ Validação de formato de IP e MAC address
+✓ Proteção contra NoSQL Injection
+
+
+TESTES DE PERFORMANCE:
+✓ Tempo de resposta da API < 500ms
+✓ Carregamento inicial < 3 segundos
+✓ Sistema suporta múltiplos usuários simultâneos
+✓ Consultas ao banco otimizadas com índices
+
+
+TESTES DE RESPONSIVIDADE:
+✓ Layout funciona em desktop (> 1024px)
+✓ Layout funciona em tablet (640-1024px)
+✓ Layout funciona em mobile (< 640px)
+✓ Navegação touch-friendly em dispositivos móveis
+
+
+═══════════════════════════════════════════════════════════════════════════════
+
+
+6.7. INSTRUÇÕES DE INSTALAÇÃO E DEPLOY
+
+
+PRÉ-REQUISITOS:
+
+- Node.js versão 16 ou superior
+- MongoDB versão 4.4 ou superior (local ou MongoDB Atlas)
+- NPM ou Yarn
+- Git (para clonar o repositório)
+
+
+INSTALAÇÃO LOCAL:
+
+Passo 1: Clone o repositório
+```
+git clone <url-do-repositorio>
+cd WaterySoil
+```
+
+Passo 2: Instale as dependências do frontend
+```
+npm install
+```
+
+Passo 3: Instale as dependências do backend
+```
+cd backend
+npm install
+cd ..
+```
+
+Passo 4: Configure as variáveis de ambiente
+
+Crie um arquivo `.env` na raiz do projeto:
+```
+VITE_API_URL=http://localhost:3000/api/v1
+```
+
+Crie um arquivo `.env` na pasta `backend/`:
+```
+PORT=3000
+MONGODB_URI=mongodb://localhost:27017/waterysoil
+JWT_SECRET=sua_chave_secreta_aqui_muito_segura
+```
+
+Nota: Para MongoDB Atlas, use:
+```
+MONGODB_URI=mongodb+srv://usuario:senha@cluster.mongodb.net/waterysoil
+```
+
+Passo 5: Inicie o MongoDB (se local)
+```
+mongod
+```
+
+Passo 6: Inicie o backend
+```
+cd backend
+npm run dev
+```
+O servidor estará rodando em http://localhost:3000
+
+Passo 7: Em outro terminal, inicie o frontend
+```
+npm run dev
+```
+A aplicação estará disponível em http://localhost:5173
+
+
+SCRIPTS DISPONÍVEIS:
+
+FRONTEND:
+- `npm run dev` - Inicia servidor de desenvolvimento (Vite)
+- `npm run build` - Cria build de produção
+- `npm run preview` - Preview do build de produção
+- `npm run lint` - Executa linter (ESLint)
+- `npm run server` - Atalho para iniciar backend
+
+BACKEND:
+- `npm start` - Inicia servidor em produção
+- `npm run dev` - Inicia servidor em desenvolvimento (Nodemon)
+
+
+DEPLOY EM PRODUÇÃO:
+
+BACKEND (Heroku, Railway, Render):
+
+1. Prepare o projeto:
+   - Certifique-se que `package.json` tem script "start"
+   - Configure variáveis de ambiente no painel da plataforma
+   - Use MongoDB Atlas para banco de dados
+
+2. Variáveis de ambiente necessárias:
+   - PORT (geralmente fornecido automaticamente)
+   - MONGODB_URI (connection string do MongoDB Atlas)
+   - JWT_SECRET (chave secreta forte)
+
+3. Deploy:
+   - Conecte repositório Git
+   - Configure branch principal
+   - Deploy automático a cada push
+
+
+FRONTEND (Vercel, Netlify):
+
+1. Build do projeto:
+```
+npm run build
+```
+
+2. Configure variáveis de ambiente:
+   - VITE_API_URL=https://seu-backend.herokuapp.com/api/v1
+
+3. Deploy:
+   - Conecte repositório Git
+   - Configure comando de build: `npm run build`
+   - Configure diretório de output: `dist`
+   - Deploy automático
+
+
+CONFIGURAÇÃO DE PRODUÇÃO:
+
+1. Segurança:
+   - Use HTTPS em produção
+   - Configure CORS para domínios específicos
+   - Use senhas fortes para banco de dados
+   - Mantenha JWT_SECRET seguro e complexo
+   - Ative rate limiting
+
+2. Performance:
+   - Ative compressão gzip
+   - Configure cache de assets estáticos
+   - Use CDN para assets
+   - Otimize imagens
+
+3. Monitoramento:
+   - Configure logs de erro
+   - Monitore performance da API
+   - Configure alertas para downtime
+   - Backup regular do banco de dados
+
+
+TROUBLESHOOTING:
+
+Problema: Erro de conexão com MongoDB
+Solução: Verifique se MongoDB está rodando e MONGODB_URI está correto
+
+Problema: CORS error no frontend
+Solução: Verifique se backend está rodando e VITE_API_URL está correto
+
+Problema: Token JWT inválido
+Solução: Faça logout e login novamente, verifique JWT_SECRET
+
+Problema: Porta já em uso
+Solução: Mude a porta no .env ou encerre processo na porta
+
+
+═══════════════════════════════════════════════════════════════════════════════
+
+
+7. PLANEJAMENTO E CRONOGRAMA
+
+
+METODOLOGIA DE DESENVOLVIMENTO:
+
+O projeto WaterySoil foi desenvolvido utilizando metodologia ágil com sprints
+semanais, permitindo entregas incrementais e ajustes contínuos baseados em
+feedback.
+
+
+FASES DO PROJETO:
+
+FASE 1: PLANEJAMENTO E DESIGN (Semanas 1-2)
+- Levantamento de requisitos
+- Definição de escopo e funcionalidades
+- Criação de wireframes e protótipos
+- Definição da arquitetura do sistema
+- Escolha de tecnologias
+- Configuração do ambiente de desenvolvimento
+
+FASE 2: DESENVOLVIMENTO DO BACKEND (Semanas 3-5)
+- Configuração do servidor Express
+- Conexão com MongoDB
+- Criação dos modelos (Mongoose Schemas)
+- Implementação de autenticação JWT
+- Desenvolvimento dos controllers
+- Criação das rotas da API
+- Testes de endpoints
+
+FASE 3: DESENVOLVIMENTO DO FRONTEND (Semanas 6-8)
+- Configuração do projeto React + Vite
+- Implementação do sistema de autenticação
+- Desenvolvimento da Landing Page
+- Criação do Dashboard principal
+- Implementação do gerenciamento de ambientes e setores
+- Desenvolvimento do gerenciamento de módulos Arduino
+- Implementação do sistema de manutenções
+- Criação das configurações de usuário
+
+FASE 4: INTEGRAÇÃO E TESTES (Semana 9)
+- Integração frontend-backend
+- Testes de integração
+- Testes de usabilidade
+- Correção de bugs
+- Otimizações de performance
+- Ajustes de responsividade
+
+FASE 5: DOCUMENTAÇÃO E DEPLOY (Semana 10)
+- Documentação do código
+- Documentação da API
+- Manual do usuário
+- Preparação para deploy
+- Deploy em ambiente de produção
+- Testes finais
+
+
+CRONOGRAMA DETALHADO:
+
+Semana 1-2: Planejamento
+├── Análise de requisitos
+├── Design de interface
+├── Arquitetura do sistema
+└── Setup inicial
+
+Semana 3-4: Backend Core
+├── Autenticação (User model, JWT)
+├── Ambientes e Setores
+└── API básica
+
+Semana 5: Backend Avançado
+├── Módulos Arduino
+├── Manutenções
+└── Upload de arquivos
+
+Semana 6-7: Frontend Core
+├── Autenticação UI
+├── Dashboard
+└── Gerenciamento de Ambientes
+
+Semana 8: Frontend Avançado
+├── Módulos Arduino UI
+├── Manutenções UI
+└── Configurações de Usuário
+
+Semana 9: Integração e Testes
+├── Testes de integração
+├── Correção de bugs
+└── Otimizações
+
+Semana 10: Finalização
+├── Documentação
+├── Deploy
+└── Entrega
+
+
+ENTREGAS PRINCIPAIS:
+
+Sprint 1 (Semana 2): Protótipos e arquitetura definidos
+Sprint 2 (Semana 4): API de autenticação e ambientes funcionando
+Sprint 3 (Semana 6): Frontend básico com autenticação
+Sprint 4 (Semana 8): Sistema completo funcionando localmente
+Sprint 5 (Semana 10): Sistema em produção com documentação
+
+
+RISCOS E MITIGAÇÕES:
+
+RISCO: Atraso no desenvolvimento
+MITIGAÇÃO: Priorização de funcionalidades essenciais (MoSCoW)
+
+RISCO: Problemas de integração frontend-backend
+MITIGAÇÃO: Definição clara de contratos de API desde o início
+
+RISCO: Dificuldades com MongoDB
+MITIGAÇÃO: Uso de Mongoose para abstrair complexidade
+
+RISCO: Problemas de segurança
+MITIGAÇÃO: Implementação de JWT, bcrypt e validações desde o início
+
+
+═══════════════════════════════════════════════════════════════════════════════
+
+
+8. EQUIPE ENVOLVIDA
+
+
+ESTRUTURA DA EQUIPE:
+
+O projeto WaterySoil foi desenvolvido como parte do Projeto Integrador UC16 do
+SENAC, com a seguinte estrutura de equipe:
+
+
+DESENVOLVEDOR FULL-STACK:
+- Responsável pelo desenvolvimento completo do sistema
+- Frontend: React, TypeScript, Tailwind CSS
+- Backend: Node.js, Express, MongoDB
+- Integração e deploy
+
+ORIENTADOR TÉCNICO:
+- Orientação sobre arquitetura e boas práticas
+- Revisão de código
+- Suporte técnico
+
+COORDENADOR PEDAGÓGICO:
+- Acompanhamento do projeto
+- Avaliação de entregas
+- Suporte metodológico
+
+
+RESPONSABILIDADES:
+
+ANÁLISE E PLANEJAMENTO:
+- Levantamento de requisitos
+- Definição de escopo
+- Criação de cronograma
+- Documentação inicial
+
+DESENVOLVIMENTO:
+- Implementação do backend (API RESTful)
+- Implementação do frontend (React SPA)
+- Integração de sistemas
+- Testes e correções
+
+QUALIDADE:
+- Testes de funcionalidades
+- Validação de requisitos
+- Revisão de código
+- Documentação técnica
+
+DEPLOY E MANUTENÇÃO:
+- Configuração de ambientes
+- Deploy em produção
+- Monitoramento
+- Suporte pós-implantação
+
+
+COMPETÊNCIAS DESENVOLVIDAS:
+
+TÉCNICAS:
+- Desenvolvimento full-stack com JavaScript/TypeScript
+- Arquitetura de APIs RESTful
+- Bancos de dados NoSQL (MongoDB)
+- Autenticação e segurança (JWT, bcrypt)
+- Versionamento de código (Git)
+- Deploy e DevOps básico
+
+SOFT SKILLS:
+- Gestão de tempo e prioridades
+- Resolução de problemas
+- Documentação técnica
+- Comunicação de ideias técnicas
+- Aprendizado contínuo
+
+
+═══════════════════════════════════════════════════════════════════════════════
+
+
+9. CONTATO E PROPRIEDADE
+
+
+INFORMAÇÕES DO PROJETO:
+
+Nome do Projeto: WaterySoil - Plataforma de Monitoramento Agrícola Inteligente
+Instituição: SENAC
+Curso: Projeto Integrador UC16
+Ano: 2024
+
+
+PROPRIEDADE INTELECTUAL:
+
+Este projeto foi desenvolvido como parte do Projeto Integrador UC16 do SENAC.
+Todos os direitos reservados.
+
+O código-fonte é de propriedade do desenvolvedor e da instituição SENAC, sendo
+permitido seu uso para fins educacionais e demonstração de portfólio.
+
+
+LICENÇA:
+
+O projeto está sob licença educacional. O uso comercial requer autorização
+prévia do desenvolvedor e da instituição.
+
+
+TECNOLOGIAS OPEN SOURCE UTILIZADAS:
+
+Este projeto utiliza diversas tecnologias open source, incluindo:
+- React (MIT License)
+- Node.js (MIT License)
+- Express (MIT License)
+- MongoDB (SSPL)
+- Mongoose (MIT License)
+- Tailwind CSS (MIT License)
+- E outras bibliotecas listadas em package.json
+
+Agradecemos às comunidades open source por tornarem este projeto possível.
+
+
+AGRADECIMENTOS:
+
+- SENAC pela oportunidade e estrutura
+- Orientadores técnicos pelo suporte
+- Comunidade open source pelas ferramentas
+- Colegas de curso pelo feedback
+
+
+CONTATO PARA DÚVIDAS E SUPORTE:
+
+Para questões técnicas sobre o projeto:
+- Consulte a documentação neste arquivo
+- Verifique o README.md no repositório
+- Entre em contato com a coordenação do curso
+
+
+REPOSITÓRIO:
+
+O código-fonte do projeto está disponível em repositório Git privado.
+Acesso mediante autorização.
+
+
+VERSÃO DA DOCUMENTAÇÃO:
+
+Versão: 1.0
+Data: 2024
+Última atualização: [Data atual]
+
+
+═══════════════════════════════════════════════════════════════════════════════
+
+
+FIM DA DOCUMENTAÇÃO
+
+Este documento apresentou de forma completa o projeto WaterySoil, incluindo:
+- Introdução e visão geral do sistema
+- Objetivos e metodologia utilizada
+- Funcionalidades principais com manuais de usuário
+- Tecnologias utilizadas (frontend, backend, ferramentas)
+- Requisitos de segurança e não-funcionais
+- Arquitetura do sistema e modelo de dados
+- Código-fonte, padrões e documentação da API
+- Plano de testes
+- Instruções de instalação e deploy
+- Planejamento e cronograma
+- Equipe envolvida
+- Contato e propriedade
+
+Para mais informações, consulte os arquivos do projeto ou entre em contato com
+a equipe responsável.
+
+
+═══════════════════════════════════════════════════════════════════════════════
+
