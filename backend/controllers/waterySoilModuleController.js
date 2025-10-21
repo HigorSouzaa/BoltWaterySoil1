@@ -1,5 +1,6 @@
 const WaterySoilModule = require("../models/WaterySoilModule");
 const Sector = require("../models/Sector");
+const EcoSoilPro = require("../models/EcoSoilPro");
 
 /**
  * Controller para gerenciamento de módulos WaterySoil
@@ -128,51 +129,72 @@ const createWaterySoilModule = async (req, res) => {
       });
     }
 
-    // Verifica se já existe um módulo com o mesmo nome no setor
+    // VALIDAÇÃO OBRIGATÓRIA: MAC Address é obrigatório para Eco-Soil Pro
+    if (!mac_address || mac_address.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "MAC Address é obrigatório para registrar um módulo Eco-Soil Pro"
+      });
+    }
+
+    // VALIDAÇÃO 1: Verifica se existe um dispositivo Eco-Soil Pro registrado com este MAC
+    const ecoSoilDevice = await EcoSoilPro.findOne({
+      mac_address: mac_address.trim().toUpperCase(),
+      is_active: true
+    });
+
+    if (!ecoSoilDevice) {
+      return res.status(404).json({
+        success: false,
+        message: "Nenhum dispositivo Eco-Soil Pro encontrado com este MAC Address. Por favor, registre o hardware primeiro."
+      });
+    }
+
+    // VALIDAÇÃO 2: Verifica se este MAC Address já está sendo usado por outro módulo
     const existingModule = await WaterySoilModule.findOne({
-      name: name.trim(),
-      sector_id: sector_id,
-      user_id: req.user._id,
+      mac_address: mac_address.trim().toUpperCase(),
       is_active: true
     });
 
     if (existingModule) {
       return res.status(400).json({
         success: false,
-        message: "Já existe um módulo com este nome neste setor"
+        message: "Este MAC Address já está vinculado a outro módulo. Cada dispositivo Eco-Soil Pro pode ser usado apenas uma vez."
       });
     }
 
-    // Se IP foi fornecido, verifica se já está em uso
-    if (ip_address) {
-      const existingIP = await WaterySoilModule.findOne({
-        ip_address: ip_address.trim(),
-        user_id: req.user._id,
-        is_active: true
+    // VALIDAÇÃO 3: Verifica se o dispositivo Eco-Soil Pro já está em uso
+    if (ecoSoilDevice.status === 'in_use') {
+      return res.status(400).json({
+        success: false,
+        message: "Este dispositivo Eco-Soil Pro já está em uso. Escolha outro dispositivo."
       });
-
-      if (existingIP) {
-        return res.status(400).json({
-          success: false,
-          message: "Este endereço IP já está em uso"
-        });
-      }
     }
 
-    // Cria o novo módulo
+    // Cria o novo módulo vinculado ao Eco-Soil Pro
     const module = new WaterySoilModule({
       name: name.trim(),
       module_type: module_type || 'sensor',
       sector_id,
       user_id: req.user._id,
       ip_address: ip_address?.trim() || null,
-      mac_address: mac_address?.trim() || null,
+      mac_address: mac_address.trim().toUpperCase(),
       configuration: configuration || {},
-      firmware_version: firmware_version?.trim() || null,
-      status: 'offline'
+      firmware_version: ecoSoilDevice.firmware_version, // Usa a versão do dispositivo
+      status: 'offline',
+      sensor_data: {
+        soil_moisture: ecoSoilDevice.sensor_data.soil_moisture,
+        temperature: ecoSoilDevice.sensor_data.temperature,
+        npk: ecoSoilDevice.sensor_data.npk,
+        ph: ecoSoilDevice.sensor_data.ph
+      }
     });
 
     await module.save();
+
+    // Atualiza o status do dispositivo Eco-Soil Pro para "in_use"
+    ecoSoilDevice.status = 'in_use';
+    await ecoSoilDevice.save();
 
     // Popula as referências antes de retornar
     await module.populate('sector_id', 'name environment_id');
@@ -187,7 +209,7 @@ const createWaterySoilModule = async (req, res) => {
     return res.status(201).json({
       success: true,
       data: module,
-      message: "Módulo WaterySoil criado com sucesso"
+      message: `Módulo WaterySoil criado com sucesso e vinculado ao dispositivo Eco-Soil Pro (${ecoSoilDevice.serial_number})`
     });
   } catch (error) {
     console.error('Erro ao criar módulo WaterySoil:', error);
@@ -360,9 +382,22 @@ const deleteWaterySoilModule = async (req, res) => {
     module.is_active = false;
     await module.save();
 
+    // Libera o dispositivo Eco-Soil Pro se houver MAC Address vinculado
+    if (module.mac_address) {
+      const ecoSoilDevice = await EcoSoilPro.findOne({
+        mac_address: module.mac_address,
+        is_active: true
+      });
+
+      if (ecoSoilDevice && ecoSoilDevice.status === 'in_use') {
+        ecoSoilDevice.status = 'registered';
+        await ecoSoilDevice.save();
+      }
+    }
+
     return res.status(200).json({
       success: true,
-      message: "Módulo WaterySoil removido com sucesso"
+      message: "Módulo WaterySoil removido com sucesso. O dispositivo Eco-Soil Pro foi liberado para novo uso."
     });
   } catch (error) {
     console.error('Erro ao deletar módulo WaterySoil:', error);
