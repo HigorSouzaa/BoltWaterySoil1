@@ -146,7 +146,7 @@ exports.getDeviceByMAC = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      device
+      data: device
     });
 
   } catch (error) {
