@@ -1,20 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, CreditCard as Edit2, Trash2, Wifi, WifiOff, AlertCircle, Settings } from 'lucide-react';
-import arduinoModuleService, { ArduinoModule } from '../services/arduinoModuleService';
+import waterySoilModuleService, { WaterySoilModule } from '../services/waterySoilModuleService';
 import sectorService, { Sector } from '../services/sectorService';
 import environmentService, { Environment } from '../services/environmentService';
+import { useNotification } from '../contexts/NotificationContext';
 
-export const ArduinoModules: React.FC = () => {
-  const [modules, setModules] = useState<ArduinoModule[]>([]);
+export const WaterySoilModules: React.FC = () => {
+  const notification = useNotification();
+  const [modules, setModules] = useState<WaterySoilModule[]>([]);
   const [sectors, setSectors] = useState<Sector[]>([]);
   const [environments, setEnvironments] = useState<Environment[]>([]);
   const [selectedSector, setSelectedSector] = useState<string>('');
   const [showModal, setShowModal] = useState(false);
-  const [editingModule, setEditingModule] = useState<ArduinoModule | null>(null);
+  const [editingModule, setEditingModule] = useState<WaterySoilModule | null>(null);
   const [moduleForm, setModuleForm] = useState({
-    name: '',
+    name: 'Sensor Eco-Soil Pro',
     module_type: 'sensor',
-    ip_address: '',
+    mac_address: '',
     configuration: {}
   });
 
@@ -61,7 +63,7 @@ export const ArduinoModules: React.FC = () => {
     if (!selectedSector) return;
 
     try {
-      const data = await arduinoModuleService.getArduinoModules(selectedSector);
+      const data = await waterySoilModuleService.getWaterySoilModules(selectedSector);
       setModules(data || []);
     } catch (error) {
       console.error('Error loading modules:', error);
@@ -73,33 +75,44 @@ export const ArduinoModules: React.FC = () => {
 
     try {
       if (editingModule) {
-        await arduinoModuleService.updateArduinoModule(editingModule._id, {
+        await waterySoilModuleService.updateWaterySoilModule(editingModule._id, {
           name: moduleForm.name,
           module_type: moduleForm.module_type as any,
-          ip_address: moduleForm.ip_address || undefined,
+          mac_address: moduleForm.mac_address || undefined,
           configuration: moduleForm.configuration
         });
+        notification.success('Módulo atualizado!', 'As alterações foram salvas com sucesso.');
       } else {
-        await arduinoModuleService.createArduinoModule({
+        await waterySoilModuleService.createWaterySoilModule({
           name: moduleForm.name,
           module_type: moduleForm.module_type as any,
           sector_id: selectedSector,
-          ip_address: moduleForm.ip_address || undefined,
+          mac_address: moduleForm.mac_address || undefined,
           configuration: moduleForm.configuration
         });
+        notification.success('Módulo criado!', 'O novo módulo foi adicionado com sucesso.');
       }
 
       setShowModal(false);
       setEditingModule(null);
       setModuleForm({
-        name: '',
+        name: 'Sensor Eco-Soil Pro',
         module_type: 'sensor',
-        ip_address: '',
+        mac_address: '',
         configuration: {}
       });
       loadModules();
     } catch (error) {
       console.error('Error saving module:', error);
+      
+      // Trata o erro da API
+      if (error instanceof Error) {
+        notification.error('Erro ao salvar módulo', error.message);
+      } else if (typeof error === 'string') {
+        notification.error('Erro ao salvar módulo', error);
+      } else {
+        notification.error('Erro ao salvar módulo', 'Ocorreu um erro inesperado. Tente novamente.');
+      }
     }
   };
 
@@ -107,28 +120,42 @@ export const ArduinoModules: React.FC = () => {
     if (!confirm('Tem certeza que deseja excluir este módulo?')) return;
 
     try {
-      await arduinoModuleService.deleteArduinoModule(id);
+      await waterySoilModuleService.deleteWaterySoilModule(id);
+      notification.success('Módulo excluído!', 'O módulo foi removido com sucesso.');
       loadModules();
     } catch (error) {
       console.error('Error deleting module:', error);
+
+      if (error instanceof Error) {
+        notification.error('Erro ao excluir módulo', error.message);
+      } else {
+        notification.error('Erro ao excluir', 'Não foi possível excluir o módulo.');
+      }
     }
   };
 
   const handlePingModule = async (moduleId: string) => {
     try {
-      await arduinoModuleService.pingArduinoModule(moduleId);
+      await waterySoilModuleService.pingWaterySoilModule(moduleId);
+      notification.success('Teste realizado!', 'O módulo respondeu com sucesso.');
       loadModules();
     } catch (error) {
       console.error('Error pinging module:', error);
+
+      if (error instanceof Error) {
+        notification.error('Erro ao testar módulo', error.message);
+      } else {
+        notification.error('Erro no teste', 'Não foi possível comunicar com o módulo.');
+      }
     }
   };
 
-  const openEditModule = (module: ArduinoModule) => {
+  const openEditModule = (module: WaterySoilModule) => {
     setEditingModule(module);
     setModuleForm({
       name: module.name,
       module_type: module.module_type,
-      ip_address: module.ip_address || '',
+      mac_address: module.mac_address || '',
       configuration: module.configuration || {}
     });
     setShowModal(true);
@@ -188,15 +215,15 @@ export const ArduinoModules: React.FC = () => {
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
               <Settings size={28} />
-              Módulos Arduino
+              Módulos WaterySoil
             </h2>
             <button
               onClick={() => {
                 setEditingModule(null);
                 setModuleForm({
-                  name: '',
+                  name: 'Sensor Eco-Soil Pro',
                   module_type: 'sensor',
-                  ip_address: '',
+                  mac_address: '',
                   configuration: {}
                 });
                 setShowModal(true);
@@ -255,9 +282,9 @@ export const ArduinoModules: React.FC = () => {
                     </span>
                   </div>
 
-                  {module.ip_address && (
+                  {module.mac_address && (
                     <div className="mb-3">
-                      <p className="text-xs text-gray-600">IP: {module.ip_address}</p>
+                      <p className="text-xs text-gray-600">MAC: {module.mac_address}</p>
                     </div>
                   )}
 
@@ -307,49 +334,39 @@ export const ArduinoModules: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Tipo de Módulo
                 </label>
-                <select
-                  value={moduleForm.module_type}
-                  onChange={(e) => setModuleForm({ ...moduleForm, module_type: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="sensor">Sensor</option>
-                  {/* Trabalhar somente com sensor por enquanto */}
-                  {/* <option value="actuator">Atuador</option>
-                  <option value="controller">Controlador</option>
-                  <option value="monitor">Monitor</option> */}
-                </select>
+                <input
+                  type="text"
+                  value="Sensor"
+                  disabled
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed"
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Nome do Módulo
                 </label>
-                <select
-                  value={moduleForm.name}
-                  onChange={(e) => setModuleForm({ ...moduleForm, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="">Selecione um nome</option>
-                  {moduleForm.module_type === 'sensor' && (
-                    <>
-                      <option value="Umidade do Solo">Sensor de Umidade do Solo</option>
-                      <option value="Temperatura">Sensor de Temperatura</option>
-                      <option value="Nutrientes NPK">Sensor de Nutrientes NPK</option>
-                      <option value="pH do Solo">Sensor de pH do Solo</option>
-                    </>
-                  )}
-                </select>
+                <input
+                  type="text"
+                  value="Sensor Eco-Soil Pro"
+                  disabled
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed"
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Endereço IP (opcional)
+                  MAC Address (opcional)
                 </label>
                 <input
                   type="text"
-                  value={moduleForm.ip_address}
-                  onChange={(e) => setModuleForm({ ...moduleForm, ip_address: e.target.value })}
+                  value={moduleForm.mac_address}
+                  onChange={(e) => setModuleForm({ ...moduleForm, mac_address: e.target.value.toUpperCase() })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="192.168.1.100"
+                  placeholder="AA:BB:CC:DD:EE:FF"
+                  maxLength={17}
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  Formato: AA:BB:CC:DD:EE:FF
+                </p>
               </div>
             </div>
             <div className="flex gap-3 mt-6">
@@ -358,9 +375,9 @@ export const ArduinoModules: React.FC = () => {
                   setShowModal(false);
                   setEditingModule(null);
                   setModuleForm({
-                    name: '',
+                    name: 'Sensor Eco-Soil Pro',
                     module_type: 'sensor',
-                    ip_address: '',
+                    mac_address: '',
                     configuration: {}
                   });
                 }}

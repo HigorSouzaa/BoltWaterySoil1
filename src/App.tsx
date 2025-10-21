@@ -3,6 +3,7 @@ import Landing from './components/Landing';
 import Auth from './components/Auth';
 import Dashboard from './components/Dashboard';
 import { AuthProvider } from './contexts/AuthContext';
+import { NotificationProvider } from './contexts/NotificationContext';
 
 export type Screen = 'landing' | 'auth' | 'dashboard';
 
@@ -26,20 +27,22 @@ function App() {
 
   return (
     <AuthProvider>
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50">
-        {currentScreen === 'landing' && (
-          <Landing onNavigateToAuth={() => navigateToScreen('auth')} />
-        )}
-        {currentScreen === 'auth' && (
-          <Auth
-            onLogin={handleLogin}
-            onBackToLanding={() => navigateToScreen('landing')}
-          />
-        )}
-        {currentScreen === 'dashboard' && isAuthenticated && (
-          <Dashboard onLogout={handleLogout} />
-        )}
-      </div>
+      <NotificationProvider>
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50">
+          {currentScreen === 'landing' && (
+            <Landing onNavigateToAuth={() => navigateToScreen('auth')} />
+          )}
+          {currentScreen === 'auth' && (
+            <Auth
+              onLogin={handleLogin}
+              onBackToLanding={() => navigateToScreen('landing')}
+            />
+          )}
+          {currentScreen === 'dashboard' && isAuthenticated && (
+            <Dashboard onLogout={handleLogout} />
+          )}
+        </div>
+      </NotificationProvider>
     </AuthProvider>
   );
 }

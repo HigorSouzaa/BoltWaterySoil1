@@ -1,124 +1,214 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, CreditCard as Edit2, Trash2, Calendar, CheckCircle, Clock, AlertTriangle } from 'lucide-react';
 import maintenanceScheduleService, { MaintenanceSchedule as MaintenanceScheduleType } from '../services/maintenanceScheduleService';
 import sectorService, { Sector } from '../services/sectorService';
 import environmentService, { Environment } from '../services/environmentService';
-import arduinoModuleService, { ArduinoModule } from '../services/arduinoModuleService';
+import waterySoilModuleService, { WaterySoilModule } from '../services/waterySoilModuleService';
+import { useNotification } from '../contexts/NotificationContext';
 
 export const MaintenanceSchedule: React.FC = () => {
+  const { success, error, warning } = useNotification();
   const [schedules, setSchedules] = useState<MaintenanceScheduleType[]>([]);
   const [sectors, setSectors] = useState<Sector[]>([]);
   const [environments, setEnvironments] = useState<Environment[]>([]);
-  const [modules, setModules] = useState<ArduinoModule[]>([]);
-  const [selectedSector, setSelectedSector] = useState<string>('');
-  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [modules, setModules] = useState<WaterySoilModule[]>([]);
+  const [selectedSector, setSelectedSector] = useState<string>("");
+  const [filterStatus, setFilterStatus] = useState<string>("all");
   const [showModal, setShowModal] = useState(false);
-  const [editingSchedule, setEditingSchedule] = useState<MaintenanceScheduleType | null>(null);
+  const [editingSchedule, setEditingSchedule] =
+    useState<MaintenanceScheduleType | null>(null);
   const [scheduleForm, setScheduleForm] = useState({
-    title: '',
-    description: '',
-    scheduled_date: '',
-    priority: 'medium',
-    arduino_module_id: ''
+    title: "",
+    description: "",
+    scheduled_date: "",
+    priority: "medium",
+    arduino_module_id: "",
   });
 
-  useEffect(() => {
-    loadEnvironments();
-  }, []);
-
-  useEffect(() => {
-    if (environments.length > 0) {
-      loadSectors();
-    }
-  }, [environments]);
-
-  useEffect(() => {
-    if (selectedSector) {
-      loadSchedules();
-      loadModules();
-    }
-  }, [selectedSector, filterStatus]);
-
-  const loadEnvironments = async () => {
+  // Função para carregar ambientes
+  const loadEnvironments = useCallback(async () => {
     try {
       const data = await environmentService.getEnvironments();
       setEnvironments(data || []);
-    } catch (error) {
-      console.error('Error loading environments:', error);
+    } catch (err) {
+      console.error('Error loading environments:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar ambientes';
+      error('Erro ao carregar ambientes', errorMessage);
     }
-  };
+  }, [error]);
 
-  const loadSectors = async () => {
+  // Função para carregar setores
+  const loadSectors = useCallback(async () => {
     try {
       const data = await sectorService.getSectors();
       setSectors(data || []);
       if (data && data.length > 0 && !selectedSector) {
         setSelectedSector(data[0]._id);
       }
-    } catch (error) {
-      console.error('Error loading sectors:', error);
+    } catch (err) {
+      console.error('Error loading sectors:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar setores';
+      error('Erro ao carregar setores', errorMessage);
     }
-  };
+  }, [selectedSector, error]);
 
-  const loadModules = async () => {
+  // Função para carregar módulos
+  const loadModules = useCallback(async () => {
     if (!selectedSector) return;
 
     try {
-      const data = await arduinoModuleService.getArduinoModules(selectedSector);
+      const data = await waterySoilModuleService.getWaterySoilModules(selectedSector);
       setModules(data || []);
-    } catch (error) {
-      console.error('Error loading modules:', error);
+    } catch (err) {
+      console.error('Error loading modules:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar módulos';
+      error('Erro ao carregar módulos', errorMessage);
     }
-  };
+  }, [selectedSector, error]);
 
-  const loadSchedules = async () => {
+  // Função para carregar cronogramas
+  const loadSchedules = useCallback(async () => {
     if (!selectedSector) return;
 
     try {
+      // Buscar apenas por setor, SEM filtro de status ainda
       const filters = {
-        sector_id: selectedSector,
-        ...(filterStatus !== 'all' && { status: filterStatus })
+        sector_id: selectedSector
       };
+      
       const data = await maintenanceScheduleService.getMaintenanceSchedules(filters);
 
+      // Primeiro, atualizar status de manutenções atrasadas
       const updatedSchedules = (data || []).map(schedule => {
         const scheduledDate = new Date(schedule.scheduled_date);
         const now = new Date();
 
-        if (schedule.status === 'pending' && scheduledDate < now) {
-          return { ...schedule, status: 'overdue' as const };
+        if (schedule.status === "pending" && scheduledDate < now) {
+          return { ...schedule, status: "overdue" as const };
         }
         return schedule;
       });
 
-      setSchedules(updatedSchedules);
-    } catch (error) {
-      console.error('Error loading schedules:', error);
+      // DEPOIS, filtrar por status se necessário
+      let filteredSchedules = updatedSchedules;
+      if (filterStatus !== 'all') {
+        filteredSchedules = updatedSchedules.filter(schedule => schedule.status === filterStatus);
+      }
+
+      setSchedules(filteredSchedules);
+    } catch (err) {
+      console.error('Error loading schedules:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar manutenções';
+      error('Erro ao carregar manutenções', errorMessage);
+    }
+  }, [selectedSector, filterStatus, error]);
+
+  // useEffects
+  useEffect(() => {
+    loadEnvironments();
+  }, [loadEnvironments]);
+
+  useEffect(() => {
+    if (environments.length > 0) {
+      loadSectors();
+    }
+  }, [environments, loadSectors]);
+
+  useEffect(() => {
+    if (selectedSector) {
+      loadSchedules();
+      loadModules();
+    }
+  }, [selectedSector, filterStatus, loadSchedules, loadModules]);
+
+  const handleSaveSchedule = async () => {
+    try {
+      // Validação
+      if (!scheduleForm.title.trim()) {
+        warning('Validação', 'O título é obrigatório');
+        return;
+      }
+
+      if (!scheduleForm.scheduled_date) {
+        warning('Validação', 'A data agendada é obrigatória');
+        return;
+      }
+
+      if (!selectedSector) {
+        warning('Validação', 'Selecione um setor');
+        return;
+      }
+
+      if (editingSchedule) {
+        // Atualizar manutenção existente
+        await maintenanceScheduleService.updateMaintenanceSchedule(editingSchedule._id, {
+          title: scheduleForm.title.trim(),
+          description: scheduleForm.description.trim() || undefined,
+          scheduled_date: scheduleForm.scheduled_date,
+          priority: scheduleForm.priority as 'low' | 'medium' | 'high' | 'critical'
+        });
+        success('Sucesso', 'Manutenção atualizada com sucesso');
+      } else {
+        // Criar nova manutenção
+        const newScheduleData = {
+          title: scheduleForm.title.trim(),
+          description: scheduleForm.description.trim() || undefined,
+          sector_id: selectedSector,
+          arduino_module_id: scheduleForm.arduino_module_id || undefined,
+          scheduled_date: scheduleForm.scheduled_date,
+          priority: scheduleForm.priority as 'low' | 'medium' | 'high' | 'critical'
+        };
+        
+        await maintenanceScheduleService.createMaintenanceSchedule(newScheduleData);
+        success('Sucesso', 'Manutenção criada com sucesso');
+      }
+
+      // Limpar formulário e fechar modal
+      setShowModal(false);
+      setEditingSchedule(null);
+      setScheduleForm({
+        title: '',
+        description: '',
+        scheduled_date: '',
+        priority: 'medium',
+        arduino_module_id: ''
+      });
+
+      // Recarregar lista
+      await loadSchedules();
+    } catch (err) {
+      console.error('Error saving schedule:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao salvar manutenção';
+      error('Erro', errorMessage);
     }
   };
 
-  const handleSaveSchedule = async () => {
-    // Temporariamente comentado - será implementado com o novo backend
-    console.log('Save schedule - será implementado');
-    setShowModal(false);
-    setEditingSchedule(null);
-    setScheduleForm({
-      title: '',
-      description: '',
-      scheduled_date: '',
-      priority: 'medium',
-      arduino_module_id: ''
-    });
-  };
-
   const handleDeleteSchedule = async (id: string) => {
-    // Temporariamente comentado - será implementado com o novo backend
-    console.log('Delete schedule - será implementado', id);
+    if (!confirm('Tem certeza que deseja excluir esta manutenção?')) {
+      return;
+    }
+
+    try {
+      await maintenanceScheduleService.deleteMaintenanceSchedule(id);
+      success('Sucesso', 'Manutenção excluída com sucesso');
+      loadSchedules();
+    } catch (err) {
+      console.error('Error deleting schedule:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao excluir manutenção';
+      error('Erro', errorMessage);
+    }
   };
 
   const handleCompleteSchedule = async (id: string) => {
-    // Temporariamente comentado - será implementado com o novo backend
-    console.log('Complete schedule - será implementado', id);
+    try {
+      await maintenanceScheduleService.completeMaintenanceSchedule(id);
+      success('Sucesso', 'Manutenção marcada como concluída');
+      loadSchedules();
+    } catch (err) {
+      console.error('Error completing schedule:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao concluir manutenção';
+      error('Erro', errorMessage);
+    }
   };
 
   const openEditSchedule = (schedule: MaintenanceScheduleType) => {
@@ -126,54 +216,54 @@ export const MaintenanceSchedule: React.FC = () => {
 
     // Extrai o ID do arduino_module_id, seja ele string, objeto ou undefined
     const moduleId = schedule.arduino_module_id
-      ? (typeof schedule.arduino_module_id === 'string'
-          ? schedule.arduino_module_id
-          : schedule.arduino_module_id._id)
-      : '';
+      ? typeof schedule.arduino_module_id === "string"
+        ? schedule.arduino_module_id
+        : schedule.arduino_module_id._id
+      : "";
 
     setScheduleForm({
       title: schedule.title,
-      description: schedule.description || '',
-      scheduled_date: schedule.scheduled_date.split('T')[0],
+      description: schedule.description || "",
+      scheduled_date: schedule.scheduled_date.split("T")[0],
       priority: schedule.priority,
-      arduino_module_id: moduleId
+      arduino_module_id: moduleId,
     });
     setShowModal(true);
   };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
-      case 'high':
-        return 'text-red-600 bg-red-100';
-      case 'medium':
-        return 'text-yellow-600 bg-yellow-100';
-      case 'low':
-        return 'text-green-600 bg-green-100';
+      case "high":
+        return "text-red-600 bg-red-100";
+      case "medium":
+        return "text-yellow-600 bg-yellow-100";
+      case "low":
+        return "text-green-600 bg-green-100";
       default:
-        return 'text-gray-600 bg-gray-100';
+        return "text-gray-600 bg-gray-100";
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'completed':
-        return 'text-green-600 bg-green-100';
-      case 'pending':
-        return 'text-blue-600 bg-blue-100';
-      case 'overdue':
-        return 'text-red-600 bg-red-100';
+      case "completed":
+        return "text-green-600 bg-green-100";
+      case "pending":
+        return "text-blue-600 bg-blue-100";
+      case "overdue":
+        return "text-red-600 bg-red-100";
       default:
-        return 'text-gray-600 bg-gray-100';
+        return "text-gray-600 bg-gray-100";
     }
   };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'completed':
+      case "completed":
         return <CheckCircle size={16} />;
-      case 'pending':
+      case "pending":
         return <Clock size={16} />;
-      case 'overdue':
+      case "overdue":
         return <AlertTriangle size={16} />;
       default:
         return <Clock size={16} />;
@@ -182,65 +272,74 @@ export const MaintenanceSchedule: React.FC = () => {
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'completed':
-        return 'Concluído';
-      case 'pending':
-        return 'Pendente';
-      case 'overdue':
-        return 'Atrasado';
+      case "completed":
+        return "Concluído";
+      case "pending":
+        return "Pendente";
+      case "overdue":
+        return "Atrasado";
       default:
-        return 'Desconhecido';
+        return "Desconhecido";
     }
   };
 
   const getPriorityText = (priority: string) => {
     switch (priority) {
-      case 'high':
-        return 'Alta';
-      case 'medium':
-        return 'Média';
-      case 'low':
-        return 'Baixa';
+      case "high":
+        return "Alta";
+      case "medium":
+        return "Média";
+      case "low":
+        return "Baixa";
       default:
-        return 'Média';
+        return "Média";
     }
   };
 
   const getSectorEnvironment = (sectorId: string) => {
-    const sector = sectors.find(s => s._id === sectorId);
-    if (!sector) return '';
-    const environmentId = typeof sector.environment_id === 'string' ? sector.environment_id : sector.environment_id._id;
-    const env = environments.find(e => e._id === environmentId);
+    const sector = sectors.find((s) => s._id === sectorId);
+    if (!sector) return "";
+    const environmentId =
+      typeof sector.environment_id === "string"
+        ? sector.environment_id
+        : sector.environment_id._id;
+    const env = environments.find((e) => e._id === environmentId);
     return env ? `${env.name} - ${sector.name}` : sector.name;
   };
 
-  const getModuleName = (moduleId: string | ArduinoModule | undefined | null) => {
-    if (!moduleId) return 'Geral';
+  const getModuleName = (
+    moduleId: string | WaterySoilModule | undefined | null
+  ) => {
+    if (!moduleId) return "Geral";
 
-    // Se moduleId é um objeto ArduinoModule, retorna o nome diretamente
-    if (typeof moduleId === 'object' && moduleId !== null) {
+    // Se moduleId é um objeto WaterySoilModule, retorna o nome diretamente
+    if (typeof moduleId === "object" && moduleId !== null) {
       return moduleId.name;
     }
 
     // Se moduleId é uma string, procura o módulo na lista
-    if (typeof moduleId === 'string') {
-      const module = modules.find(m => m._id === moduleId);
-      return module ? module.name : 'Módulo não encontrado';
+    if (typeof moduleId === "string") {
+      const module = modules.find((m) => m._id === moduleId);
+      return module ? module.name : "Módulo não encontrado";
     }
 
-    return 'Geral';
+    return "Geral";
   };
 
   const getNextMaintenanceSuggestion = () => {
     const now = new Date();
-    const pendingSchedules = schedules.filter(s => s.status === 'pending' || s.status === 'overdue');
+    const pendingSchedules = schedules.filter(
+      (s) => s.status === "pending" || s.status === "overdue"
+    );
 
     if (pendingSchedules.length === 0) {
-      return 'Nenhuma manutenção pendente';
+      return "Nenhuma manutenção pendente";
     }
 
-    const nextSchedule = pendingSchedules.sort((a, b) =>
-      new Date(a.scheduled_date).getTime() - new Date(b.scheduled_date).getTime()
+    const nextSchedule = pendingSchedules.sort(
+      (a, b) =>
+        new Date(a.scheduled_date).getTime() -
+        new Date(b.scheduled_date).getTime()
     )[0];
 
     const scheduledDate = new Date(nextSchedule.scheduled_date);
@@ -248,7 +347,9 @@ export const MaintenanceSchedule: React.FC = () => {
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
     if (diffDays < 0) {
-      return `URGENTE: ${nextSchedule.title} está ${Math.abs(diffDays)} dia(s) atrasado`;
+      return `URGENTE: ${nextSchedule.title} está ${Math.abs(
+        diffDays
+      )} dia(s) atrasado`;
     } else if (diffDays === 0) {
       return `HOJE: ${nextSchedule.title}`;
     } else if (diffDays <= 3) {
@@ -281,11 +382,11 @@ export const MaintenanceSchedule: React.FC = () => {
               onClick={() => {
                 setEditingSchedule(null);
                 setScheduleForm({
-                  title: '',
-                  description: '',
-                  scheduled_date: '',
-                  priority: 'medium',
-                  arduino_module_id: ''
+                  title: "",
+                  description: "",
+                  scheduled_date: "",
+                  priority: "medium",
+                  arduino_module_id: "",
                 });
                 setShowModal(true);
               }}
@@ -351,17 +452,29 @@ export const MaintenanceSchedule: React.FC = () => {
                 >
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex-1">
-                      <h3 className="font-semibold text-gray-800">{schedule.title}</h3>
+                      <h3 className="font-semibold text-gray-800">
+                        {schedule.title}
+                      </h3>
                       {schedule.description && (
-                        <p className="text-sm text-gray-600 mt-1">{schedule.description}</p>
+                        <p className="text-sm text-gray-600 mt-1">
+                          {schedule.description}
+                        </p>
                       )}
                     </div>
                     <div className="flex gap-2">
-                      <span className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(schedule.status)}`}>
+                      <span
+                        className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                          schedule.status
+                        )}`}
+                      >
                         {getStatusIcon(schedule.status)}
                         {getStatusText(schedule.status)}
                       </span>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(schedule.priority)}`}>
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(
+                          schedule.priority
+                        )}`}
+                      >
                         {getPriorityText(schedule.priority)}
                       </span>
                     </div>
@@ -369,20 +482,27 @@ export const MaintenanceSchedule: React.FC = () => {
 
                   <div className="grid grid-cols-2 gap-4 text-sm text-gray-600 mb-3">
                     <div>
-                      <span className="font-medium">Data agendada:</span> {new Date(schedule.scheduled_date).toLocaleDateString('pt-BR')}
+                      <span className="font-medium">Data agendada:</span>{" "}
+                      {new Date(schedule.scheduled_date).toLocaleDateString(
+                        "pt-BR"
+                      )}
                     </div>
                     {schedule.completed_date && (
                       <div>
-                        <span className="font-medium">Concluído em:</span> {new Date(schedule.completed_date).toLocaleDateString('pt-BR')}
+                        <span className="font-medium">Concluído em:</span>{" "}
+                        {new Date(schedule.completed_date).toLocaleDateString(
+                          "pt-BR"
+                        )}
                       </div>
                     )}
                     <div>
-                      <span className="font-medium">Módulo:</span> {getModuleName(schedule.arduino_module_id)}
+                      <span className="font-medium">Módulo:</span>{" "}
+                      {getModuleName(schedule.arduino_module_id)}
                     </div>
                   </div>
 
                   <div className="flex gap-2">
-                    {schedule.status !== 'completed' && (
+                    {schedule.status !== "completed" && (
                       <button
                         onClick={() => handleCompleteSchedule(schedule._id)}
                         className="flex items-center gap-1 text-sm bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 transition"
@@ -415,7 +535,7 @@ export const MaintenanceSchedule: React.FC = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
             <h3 className="text-xl font-bold mb-4">
-              {editingSchedule ? 'Editar Manutenção' : 'Nova Manutenção'}
+              {editingSchedule ? "Editar Manutenção" : "Nova Manutenção"}
             </h3>
             <div className="space-y-4">
               <div>
@@ -425,7 +545,9 @@ export const MaintenanceSchedule: React.FC = () => {
                 <input
                   type="text"
                   value={scheduleForm.title}
-                  onChange={(e) => setScheduleForm({ ...scheduleForm, title: e.target.value })}
+                  onChange={(e) =>
+                    setScheduleForm({ ...scheduleForm, title: e.target.value })
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Ex: Vistoria mensal"
                 />
@@ -436,7 +558,12 @@ export const MaintenanceSchedule: React.FC = () => {
                 </label>
                 <textarea
                   value={scheduleForm.description}
-                  onChange={(e) => setScheduleForm({ ...scheduleForm, description: e.target.value })}
+                  onChange={(e) =>
+                    setScheduleForm({
+                      ...scheduleForm,
+                      description: e.target.value,
+                    })
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   rows={3}
                   placeholder="Descrição opcional"
@@ -449,7 +576,12 @@ export const MaintenanceSchedule: React.FC = () => {
                 <input
                   type="date"
                   value={scheduleForm.scheduled_date}
-                  onChange={(e) => setScheduleForm({ ...scheduleForm, scheduled_date: e.target.value })}
+                  onChange={(e) =>
+                    setScheduleForm({
+                      ...scheduleForm,
+                      scheduled_date: e.target.value,
+                    })
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
@@ -459,7 +591,12 @@ export const MaintenanceSchedule: React.FC = () => {
                 </label>
                 <select
                   value={scheduleForm.priority}
-                  onChange={(e) => setScheduleForm({ ...scheduleForm, priority: e.target.value })}
+                  onChange={(e) =>
+                    setScheduleForm({
+                      ...scheduleForm,
+                      priority: e.target.value,
+                    })
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="low">Baixa</option>
@@ -473,7 +610,12 @@ export const MaintenanceSchedule: React.FC = () => {
                 </label>
                 <select
                   value={scheduleForm.arduino_module_id}
-                  onChange={(e) => setScheduleForm({ ...scheduleForm, arduino_module_id: e.target.value })}
+                  onChange={(e) =>
+                    setScheduleForm({
+                      ...scheduleForm,
+                      arduino_module_id: e.target.value,
+                    })
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="">Manutenção geral</option>
@@ -491,11 +633,11 @@ export const MaintenanceSchedule: React.FC = () => {
                   setShowModal(false);
                   setEditingSchedule(null);
                   setScheduleForm({
-                    title: '',
-                    description: '',
-                    scheduled_date: '',
-                    priority: 'medium',
-                    arduino_module_id: ''
+                    title: "",
+                    description: "",
+                    scheduled_date: "",
+                    priority: "medium",
+                    arduino_module_id: "",
                   });
                 }}
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"

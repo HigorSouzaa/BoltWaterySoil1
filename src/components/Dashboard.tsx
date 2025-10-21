@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Droplets,
   Leaf,
   Thermometer,
   BarChart3,
   Settings,
-  Bell,
   User,
   LogOut,
   TrendingUp,
@@ -20,10 +19,11 @@ import {
 } from 'lucide-react';
 import { EnvironmentManager } from './EnvironmentManager';
 import { UserSettings } from './UserSettings';
-import { ArduinoModules } from './ArduinoModules';
+import { WaterySoilModules } from './WaterySoilModules';
 import { MaintenanceSchedule } from './MaintenanceSchedule';
 import environmentService from '../services/environmentService';
 import sectorService from '../services/sectorService';
+import waterySoilModuleService, { WaterySoilModule } from '../services/waterySoilModuleService';
 
 interface DashboardProps {
   onLogout: () => void;
@@ -66,52 +66,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   const [availableSectors, setAvailableSectors] = useState<any[]>([]);
   const [selectedEnvironmentId, setSelectedEnvironmentId] = useState<string>('');
   const [selectedSectorId, setSelectedSectorId] = useState<string>('');
-  const [sensorData, setSensorData] = useState<SensorData[]>([
-    {
-      id: 'humidity',
-      name: 'Umidade do Solo',
-      value: 68,
-      unit: '%',
-      status: 'good',
-      trend: 'stable',
-      icon: <Droplets className="h-8 w-8" />,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50'
-    },
-    {
-      id: 'ph',
-      name: 'pH do Solo',
-      value: 6.8,
-      unit: '',
-      status: 'good',
-      trend: 'up',
-      icon: <Leaf className="h-8 w-8" />,
-      color: 'text-green-600',
-      bgColor: 'bg-green-50'
-    },
-    {
-      id: 'temperature',
-      name: 'Temperatura',
-      value: 24,
-      unit: '°C',
-      status: 'good',
-      trend: 'down',
-      icon: <Thermometer className="h-8 w-8" />,
-      color: 'text-amber-600',
-      bgColor: 'bg-amber-50'
-    },
-    {
-      id: 'nutrients',
-      name: 'Nutrientes NPK',
-      value: 85,
-      unit: '%',
-      status: 'warning',
-      trend: 'down',
-      icon: <Activity className="h-8 w-8" />,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50'
-    }
-  ]);
+  const [modules, setModules] = useState<WaterySoilModule[]>([]);
+  const [sensorData, setSensorData] = useState<SensorData[]>([]);
+  const [allUserModules, setAllUserModules] = useState<WaterySoilModule[]>([]);
+  const [onlineSensorsCount, setOnlineSensorsCount] = useState({ online: 0, total: 0 });
 
   const [alerts] = useState([
     { id: 1, type: 'warning', message: 'Sensor 3 precisa de calibração', time: '2h atrás' },
@@ -122,6 +80,134 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   useEffect(() => {
     loadActiveLocation();
   }, []);
+
+  // Função para converter módulos WaterySoil em dados de sensores para exibição
+  // Agora mostra os 4 sensores do Eco-Soil Pro de cada módulo
+  const modulesToSensorData = useCallback((modules: WaterySoilModule[]): SensorData[] => {
+    const allSensors: SensorData[] = [];
+
+    modules.forEach(module => {
+      // Determina o status baseado no status do módulo
+      let status: 'good' | 'warning' | 'critical' = 'good';
+      if (module.status === 'offline') status = 'critical';
+      else if (module.status === 'error' || module.status === 'maintenance') status = 'warning';
+
+      // 1. pH do Solo
+      if (module.sensor_data?.ph?.value !== undefined) {
+        allSensors.push({
+          id: `${module._id}-ph`,
+          name: 'pH do Solo',
+          value: module.sensor_data.ph.value,
+          unit: 'pH',
+          status,
+          trend: 'stable' as const,
+          icon: <Leaf className="h-8 w-8" />,
+          color: 'text-green-600',
+          bgColor: 'bg-green-50'
+        });
+      }
+
+      // 2. Nutrientes NPK (mostra média ou total)
+      if (module.sensor_data?.npk?.nitrogen !== undefined) {
+        const npkAvg = (
+          (module.sensor_data.npk.nitrogen || 0) +
+          (module.sensor_data.npk.phosphorus || 0) +
+          (module.sensor_data.npk.potassium || 0)
+        ) / 3;
+
+        allSensors.push({
+          id: `${module._id}-npk`,
+          name: 'Nutrientes NPK',
+          value: npkAvg,
+          unit: '%',
+          status,
+          trend: 'stable' as const,
+          icon: <Activity className="h-8 w-8" />,
+          color: 'text-purple-600',
+          bgColor: 'bg-purple-50'
+        });
+      }
+
+      // 3. Umidade do Solo
+      if (module.sensor_data?.soil_moisture?.value !== undefined) {
+        allSensors.push({
+          id: `${module._id}-moisture`,
+          name: 'Umidade do Solo',
+          value: module.sensor_data.soil_moisture.value,
+          unit: '%',
+          status,
+          trend: 'stable' as const,
+          icon: <Droplets className="h-8 w-8" />,
+          color: 'text-blue-600',
+          bgColor: 'bg-blue-50'
+        });
+      }
+
+      // 4. Temperatura
+      if (module.sensor_data?.temperature?.value !== undefined) {
+        allSensors.push({
+          id: `${module._id}-temp`,
+          name: 'Temperatura',
+          value: module.sensor_data.temperature.value,
+          unit: '°C',
+          status,
+          trend: 'stable' as const,
+          icon: <Thermometer className="h-8 w-8" />,
+          color: 'text-amber-600',
+          bgColor: 'bg-amber-50'
+        });
+      }
+    });
+
+    return allSensors;
+  }, []);
+
+  // Função para carregar TODOS os módulos do usuário (para contar sensores online/total)
+  const loadAllUserModules = useCallback(async () => {
+    try {
+      const modulesData = await waterySoilModuleService.getWaterySoilModules();
+      setAllUserModules(modulesData || []);
+
+      // Calcular sensores online/total de TODOS os módulos do usuário
+      const online = modulesData?.filter(m => m.status === 'operational').length || 0;
+      const total = modulesData?.length || 0;
+      setOnlineSensorsCount({ online, total });
+    } catch (error) {
+      console.error('Erro ao carregar módulos do usuário:', error);
+    }
+  }, []);
+
+  // Função para carregar os módulos do setor ativo
+  const loadModules = useCallback(async () => {
+    if (!activeSector?._id) return;
+
+    try {
+      const modulesData = await waterySoilModuleService.getWaterySoilModules(activeSector._id);
+      setModules(modulesData || []);
+
+      // Converte módulos em dados de sensores para o dashboard
+      const sensors = modulesToSensorData(modulesData || []);
+      setSensorData(sensors);
+    } catch (error) {
+      console.error('Error loading modules:', error);
+    }
+  }, [activeSector, modulesToSensorData]);
+
+  // Carregar módulos quando o setor ativo mudar
+  useEffect(() => {
+    if (activeSector?._id) {
+      loadModules();
+      const interval = setInterval(loadModules, 10000); // Atualiza a cada 10 segundos
+      return () => clearInterval(interval);
+    }
+  }, [activeSector, loadModules]);
+
+  // Carregar todos os módulos do usuário quando o componente montar
+  useEffect(() => {
+    loadAllUserModules();
+    const interval = setInterval(loadAllUserModules, 10000); // Atualiza a cada 10 segundos
+    return () => clearInterval(interval);
+  }, [loadAllUserModules]);
 
   const loadActiveLocation = async () => {
     try {
@@ -151,18 +237,19 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     }
   };
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setSensorData(prevData =>
-        prevData.map(sensor => ({
-          ...sensor,
-          value: sensor.value + (Math.random() - 0.5) * 2
-        }))
-      );
-    }, 5000);
+  // SIMULAÇÃO DE VALORES DESABILITADA - Agora usa valores reais do banco
+  // useEffect(() => {
+  //   const interval = setInterval(() => {
+  //     setSensorData(prevData =>
+  //       prevData.map(sensor => ({
+  //         ...sensor,
+  //         value: sensor.value + (Math.random() - 0.5) * 2
+  //       }))
+  //     );
+  //   }, 5000);
 
-    return () => clearInterval(interval);
-  }, []);
+  //   return () => clearInterval(interval);
+  // }, []);
 
   // Função para carregar ambientes e setores disponíveis
   const loadAvailableData = async () => {
@@ -300,7 +387,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
               <button
                 onClick={() => setCurrentView('modules')}
                 className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                title="Módulos Arduino"
+                title="Módulos WaterySoil"
               >
                 <Cpu className="h-5 w-5" />
               </button>
@@ -338,7 +425,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
       {currentView === 'environments' ? (
         <EnvironmentManager />
       ) : currentView === 'modules' ? (
-        <ArduinoModules />
+        <WaterySoilModules />
       ) : currentView === 'maintenance' ? (
         <MaintenanceSchedule />
       ) : currentView === 'settings' ? (
@@ -348,7 +435,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
         {/* Welcome Section */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Dashboard de Monitoramento</h1>
-          <p className="text-gray-600">Acompanhe seus sensores em tempo real e otimize sua produção</p>
+          <p className="text-gray-600">
+            {modules.length > 0 ? modules[0].name : 'Acompanhe seus sensores em tempo real e otimize sua produção'}
+          </p>
         </div>
 
         {/* Stats Grid */}
@@ -424,10 +513,24 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
-                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                    <div className={`w-3 h-3 rounded-full ${
+                      onlineSensorsCount.online === onlineSensorsCount.total && onlineSensorsCount.total > 0
+                        ? 'bg-green-500'
+                        : onlineSensorsCount.online > 0
+                        ? 'bg-amber-500'
+                        : 'bg-red-500'
+                    }`}></div>
                     <span className="text-sm text-gray-700">Sensores Online</span>
                   </div>
-                  <span className="text-sm font-semibold text-green-600">12/12</span>
+                  <span className={`text-sm font-semibold ${
+                    onlineSensorsCount.online === onlineSensorsCount.total && onlineSensorsCount.total > 0
+                      ? 'text-green-600'
+                      : onlineSensorsCount.online > 0
+                      ? 'text-amber-600'
+                      : 'text-red-600'
+                  }`}>
+                    {onlineSensorsCount.online}/{onlineSensorsCount.total}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">

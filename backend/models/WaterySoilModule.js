@@ -1,10 +1,10 @@
 const mongoose = require("mongoose");
 
 /**
- * Schema do módulo Arduino.
- * Representa um dispositivo Arduino conectado ao sistema
+ * Schema do módulo WaterySoil.
+ * Representa um dispositivo WaterySoil conectado ao sistema
  */
-const ArduinoModuleSchema = new mongoose.Schema({
+const WaterySoilModuleSchema = new mongoose.Schema({
   name: { 
     type: String, 
     required: true,
@@ -64,6 +64,27 @@ const ArduinoModuleSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
+  // Dados dos sensores do Eco-Soil Pro
+  sensor_data: {
+    soil_moisture: {
+      value: { type: Number }, // Umidade do solo em %
+      last_update: { type: Date }
+    },
+    temperature: {
+      value: { type: Number }, // Temperatura em °C
+      last_update: { type: Date }
+    },
+    npk: {
+      nitrogen: { type: Number }, // Nitrogênio em mg/kg
+      phosphorus: { type: Number }, // Fósforo em mg/kg
+      potassium: { type: Number }, // Potássio em mg/kg
+      last_update: { type: Date }
+    },
+    ph: {
+      value: { type: Number }, // pH do solo (0-14)
+      last_update: { type: Date }
+    }
+  },
   is_active: {
     type: Boolean,
     default: true
@@ -73,9 +94,10 @@ const ArduinoModuleSchema = new mongoose.Schema({
 });
 
 // Índices para melhor performance
-ArduinoModuleSchema.index({ sector_id: 1, is_active: 1 });
-ArduinoModuleSchema.index({ user_id: 1, status: 1 });
-ArduinoModuleSchema.index({ ip_address: 1 });
+WaterySoilModuleSchema.index({ sector_id: 1, is_active: 1 });
+WaterySoilModuleSchema.index({ user_id: 1, status: 1 });
+WaterySoilModuleSchema.index({ ip_address: 1 });
+WaterySoilModuleSchema.index({ mac_address: 1 }); // Índice para busca por MAC Address
 
 // Exporta o modelo para uso nos controladores
-module.exports = mongoose.model("ArduinoModule", ArduinoModuleSchema);
+module.exports = mongoose.model("WaterySoilModule", WaterySoilModuleSchema);
