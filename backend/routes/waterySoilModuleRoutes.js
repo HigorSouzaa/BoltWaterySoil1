@@ -6,12 +6,29 @@ const {
   createWaterySoilModule,
   updateWaterySoilModule,
   pingWaterySoilModule,
-  deleteWaterySoilModule
+  deleteWaterySoilModule,
+  getWaterySoilModuleByMAC,
+  updateSensorData
 } = require("../controllers/waterySoilModuleController");
 
 const router = express.Router();
 
-// Todas as rotas precisam de autenticação
+// ========================================
+// ROTAS PÚBLICAS (SEM AUTENTICAÇÃO)
+// Para o hardware Eco-Soil Pro se comunicar
+// ========================================
+
+// GET /api/v1/waterysoil-modules/by-mac/:mac_address - Buscar módulo por MAC
+router.get("/by-mac/:mac_address", getWaterySoilModuleByMAC);
+
+// PUT /api/v1/waterysoil-modules/:id/sensor-data - Atualizar dados dos sensores
+router.put("/:id/sensor-data", updateSensorData);
+
+// ========================================
+// ROTAS PROTEGIDAS (COM AUTENTICAÇÃO)
+// Para usuários do sistema
+// ========================================
+
 router.use(authenticateToken);
 
 // GET /api/v1/waterysoil-modules - Listar módulos WaterySoil

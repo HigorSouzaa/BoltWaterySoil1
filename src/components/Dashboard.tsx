@@ -82,56 +82,84 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   }, []);
 
   // Função para converter módulos WaterySoil em dados de sensores para exibição
+  // Agora mostra os 4 sensores do Eco-Soil Pro de cada módulo
   const modulesToSensorData = useCallback((modules: WaterySoilModule[]): SensorData[] => {
-    return modules.map(module => {
-      // Determina o ícone baseado no nome do módulo
-      let icon = <Cpu className="h-8 w-8" />;
-      let color = 'text-gray-600';
-      let bgColor = 'bg-gray-50';
-      let unit = '';
+    const allSensors: SensorData[] = [];
 
-      if (module.name.toLowerCase().includes('umidade')) {
-        icon = <Droplets className="h-8 w-8" />;
-        color = 'text-blue-600';
-        bgColor = 'bg-blue-50';
-        unit = '%';
-      } else if (module.name.toLowerCase().includes('ph')) {
-        icon = <Leaf className="h-8 w-8" />;
-        color = 'text-green-600';
-        bgColor = 'bg-green-50';
-        unit = '';
-      } else if (module.name.toLowerCase().includes('temperatura')) {
-        icon = <Thermometer className="h-8 w-8" />;
-        color = 'text-amber-600';
-        bgColor = 'bg-amber-50';
-        unit = '°C';
-      } else if (module.name.toLowerCase().includes('nutriente') || module.name.toLowerCase().includes('npk')) {
-        icon = <Activity className="h-8 w-8" />;
-        color = 'text-purple-600';
-        bgColor = 'bg-purple-50';
-        unit = '%';
-      }
-
+    modules.forEach(module => {
       // Determina o status baseado no status do módulo
       let status: 'good' | 'warning' | 'critical' = 'good';
       if (module.status === 'offline') status = 'critical';
       else if (module.status === 'error' || module.status === 'maintenance') status = 'warning';
 
-      // Gera um valor simulado (você pode pegar de module.configuration se tiver dados reais)
-      const value = module.configuration?.current_value || Math.random() * 100;
+      // 1. pH do Solo
+      if (module.sensor_data?.ph?.value !== undefined) {
+        allSensors.push({
+          id: `${module._id}-ph`,
+          name: 'pH do Solo',
+          value: module.sensor_data.ph.value,
+          unit: 'pH',
+          status,
+          trend: 'stable' as const,
+          icon: <Leaf className="h-8 w-8" />,
+          color: 'text-green-600',
+          bgColor: 'bg-green-50'
+        });
+      }
 
-      return {
-        id: module._id,
-        name: module.name,
-        value: typeof value === 'number' ? value : 0,
-        unit,
-        status,
-        trend: 'stable' as const,
-        icon,
-        color,
-        bgColor
-      };
+      // 2. Nutrientes NPK (mostra média ou total)
+      if (module.sensor_data?.npk?.nitrogen !== undefined) {
+        const npkAvg = (
+          (module.sensor_data.npk.nitrogen || 0) +
+          (module.sensor_data.npk.phosphorus || 0) +
+          (module.sensor_data.npk.potassium || 0)
+        ) / 3;
+
+        allSensors.push({
+          id: `${module._id}-npk`,
+          name: 'Nutrientes NPK',
+          value: npkAvg,
+          unit: '%',
+          status,
+          trend: 'stable' as const,
+          icon: <Activity className="h-8 w-8" />,
+          color: 'text-purple-600',
+          bgColor: 'bg-purple-50'
+        });
+      }
+
+      // 3. Umidade do Solo
+      if (module.sensor_data?.soil_moisture?.value !== undefined) {
+        allSensors.push({
+          id: `${module._id}-moisture`,
+          name: 'Umidade do Solo',
+          value: module.sensor_data.soil_moisture.value,
+          unit: '%',
+          status,
+          trend: 'stable' as const,
+          icon: <Droplets className="h-8 w-8" />,
+          color: 'text-blue-600',
+          bgColor: 'bg-blue-50'
+        });
+      }
+
+      // 4. Temperatura
+      if (module.sensor_data?.temperature?.value !== undefined) {
+        allSensors.push({
+          id: `${module._id}-temp`,
+          name: 'Temperatura',
+          value: module.sensor_data.temperature.value,
+          unit: '°C',
+          status,
+          trend: 'stable' as const,
+          icon: <Thermometer className="h-8 w-8" />,
+          color: 'text-amber-600',
+          bgColor: 'bg-amber-50'
+        });
+      }
     });
+
+    return allSensors;
   }, []);
 
   // Função para carregar TODOS os módulos do usuário (para contar sensores online/total)
@@ -209,18 +237,19 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     }
   };
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setSensorData(prevData =>
-        prevData.map(sensor => ({
-          ...sensor,
-          value: sensor.value + (Math.random() - 0.5) * 2
-        }))
-      );
-    }, 5000);
+  // SIMULAÇÃO DE VALORES DESABILITADA - Agora usa valores reais do banco
+  // useEffect(() => {
+  //   const interval = setInterval(() => {
+  //     setSensorData(prevData =>
+  //       prevData.map(sensor => ({
+  //         ...sensor,
+  //         value: sensor.value + (Math.random() - 0.5) * 2
+  //       }))
+  //     );
+  //   }, 5000);
 
-    return () => clearInterval(interval);
-  }, []);
+  //   return () => clearInterval(interval);
+  // }, []);
 
   // Função para carregar ambientes e setores disponíveis
   const loadAvailableData = async () => {
@@ -406,7 +435,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
         {/* Welcome Section */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Dashboard de Monitoramento</h1>
-          <p className="text-gray-600">Acompanhe seus sensores em tempo real e otimize sua produção</p>
+          <p className="text-gray-600">
+            {modules.length > 0 ? modules[0].name : 'Acompanhe seus sensores em tempo real e otimize sua produção'}
+          </p>
         </div>
 
         {/* Stats Grid */}

@@ -408,11 +408,89 @@ const deleteWaterySoilModule = async (req, res) => {
   }
 };
 
+// GET /api/v1/waterysoil-modules/by-mac/:mac_address - Buscar módulo por MAC (SEM autenticação - para hardware)
+const getWaterySoilModuleByMAC = async (req, res) => {
+  try {
+    const { mac_address } = req.params;
+
+    const module = await WaterySoilModule.findOne({
+      mac_address: mac_address.toUpperCase(),
+      is_active: true
+    })
+      .populate('sector_id', 'name environment_id')
+      .populate({
+        path: 'sector_id',
+        populate: {
+          path: 'environment_id',
+          select: 'name'
+        }
+      });
+
+    if (!module) {
+      return res.status(404).json({
+        success: false,
+        message: "Nenhum módulo encontrado com este MAC Address"
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: module
+    });
+  } catch (error) {
+    console.error('Erro ao buscar módulo por MAC:', error);
+    return res.status(500).json({
+      success: false,
+      message: "Erro interno do servidor"
+    });
+  }
+};
+
+// PUT /api/v1/waterysoil-modules/:id/sensor-data - Atualizar dados dos sensores (SEM autenticação - para hardware)
+const updateSensorData = async (req, res) => {
+  try {
+    const { sensor_data } = req.body;
+
+    const module = await WaterySoilModule.findOne({
+      _id: req.params.id,
+      is_active: true
+    });
+
+    if (!module) {
+      return res.status(404).json({
+        success: false,
+        message: "Módulo não encontrado"
+      });
+    }
+
+    // Atualiza os dados dos sensores
+    module.sensor_data = sensor_data;
+    module.status = 'operational'; // Marca como operacional
+    module.last_ping = new Date();
+
+    await module.save();
+
+    return res.status(200).json({
+      success: true,
+      data: module,
+      message: "Dados dos sensores atualizados com sucesso"
+    });
+  } catch (error) {
+    console.error('Erro ao atualizar dados dos sensores:', error);
+    return res.status(500).json({
+      success: false,
+      message: "Erro interno do servidor"
+    });
+  }
+};
+
 module.exports = {
   getWaterySoilModules,
   getWaterySoilModuleById,
   createWaterySoilModule,
   updateWaterySoilModule,
   pingWaterySoilModule,
-  deleteWaterySoilModule
+  deleteWaterySoilModule,
+  getWaterySoilModuleByMAC,    // NOVO - Para hardware encontrar o módulo
+  updateSensorData              // NOVO - Para hardware enviar dados
 };
