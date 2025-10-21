@@ -38,7 +38,7 @@ API_URL=http://localhost:3000/api/v1
 MAC_ADDRESS=AA:BB:CC:DD:EE:FF
 
 # Intervalo de envio (milissegundos)
-SEND_INTERVAL=10000
+SEND_INTERVAL=600000
 
 # Modo: realistic ou random
 SIMULATION_MODE=realistic
@@ -68,7 +68,7 @@ No sistema principal, cadastre um módulo usando o mesmo MAC Address.
 1. Hardware liga com MAC Address
 2. Busca dispositivo Eco-Soil Pro no banco
 3. Encontra módulo WaterySoil vinculado
-4. A cada 10s envia dados simulados:
+4. A cada 10min envia dados simulados:
    • Umidade: 50% → 51.2% → 49.8%
    • Temperatura: 25°C → 25.3°C → 24.9°C
    • NPK: N:40, P:30, K:35 (com variações)

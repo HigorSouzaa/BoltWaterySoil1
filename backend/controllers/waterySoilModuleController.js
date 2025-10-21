@@ -1,6 +1,7 @@
 const WaterySoilModule = require("../models/WaterySoilModule");
 const Sector = require("../models/Sector");
 const EcoSoilPro = require("../models/EcoSoilPro");
+const DataSensors = require("../models/DataSensors");
 
 /**
  * Controller para gerenciamento de módulos WaterySoil
@@ -449,7 +450,7 @@ const getWaterySoilModuleByMAC = async (req, res) => {
 // PUT /api/v1/waterysoil-modules/:id/sensor-data - Atualizar dados dos sensores (SEM autenticação - para hardware)
 const updateSensorData = async (req, res) => {
   try {
-    const { sensor_data } = req.body;
+    const { sensor_data, metadata } = req.body;
 
     const module = await WaterySoilModule.findOne({
       _id: req.params.id,
@@ -463,23 +464,69 @@ const updateSensorData = async (req, res) => {
       });
     }
 
-    // Atualiza os dados dos sensores
+    // Busca o dispositivo Eco-Soil Pro para pegar o serial_number
+    const ecoSoilDevice = await EcoSoilPro.findOne({
+      mac_address: module.mac_address,
+      is_active: true
+    });
+
+    // ========================================
+    // 1. SALVAR NO HISTÓRICO (DataSensors)
+    // ========================================
+
+    const historicalData = new DataSensors({
+      module_id: module._id,
+      mac_address: module.mac_address,
+      serial_number: ecoSoilDevice?.serial_number || null,
+      reading_timestamp: new Date(),
+      sensor_data: sensor_data,
+      metadata: {
+        firmware_version: ecoSoilDevice?.firmware_version || module.firmware_version,
+        ip_address: module.ip_address,
+        signal_strength: metadata?.signal_strength,
+        battery_level: metadata?.battery_level,
+        location: metadata?.location,
+        notes: metadata?.notes
+      },
+      status: 'valid'
+    });
+
+    // Salva no histórico
+    await historicalData.save();
+
+    // ========================================
+    // 2. ATUALIZAR DADOS ATUAIS DO MÓDULO
+    // ========================================
+
     module.sensor_data = sensor_data;
     module.status = 'operational'; // Marca como operacional
     module.last_ping = new Date();
 
     await module.save();
 
+    // ========================================
+    // 3. RETORNAR RESPOSTA
+    // ========================================
+
     return res.status(200).json({
       success: true,
-      data: module,
-      message: "Dados dos sensores atualizados com sucesso"
+      data: {
+        module: module,
+        historical_record: {
+          id: historicalData._id,
+          timestamp: historicalData.reading_timestamp,
+          is_valid: historicalData.validation.is_valid,
+          validation_messages: historicalData.validation.messages
+        }
+      },
+      message: "Dados dos sensores atualizados e salvos no histórico com sucesso"
     });
   } catch (error) {
     console.error('Erro ao atualizar dados dos sensores:', error);
     return res.status(500).json({
       success: false,
-      message: "Erro interno do servidor"
+      message: "Erro interno do servidor",
+      error: error.message
     });
   }
 };

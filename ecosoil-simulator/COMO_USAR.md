@@ -72,7 +72,7 @@ npm start
    - 💧 Umidade do Solo
    - 🌡️ Temperatura
 
-Os valores vão **mudar a cada 10 segundos** automaticamente!
+Os valores vão **mudar a cada 10 minutos** automaticamente!
 
 ---
 
@@ -177,7 +177,7 @@ Pressione `Ctrl + C` no terminal onde o simulador está rodando.
 
 **Solução:**
 1. Verifique se está no setor correto
-2. Aguarde 10 segundos (intervalo de atualização)
+2. Aguarde 10 minutos (intervalo de atualização)
 3. Recarregue a página (F5)
 
 ---
@@ -188,7 +188,8 @@ Pressione `Ctrl + C` no terminal onde o simulador está rodando.
 
 Edite `.env`:
 ```env
-SEND_INTERVAL=5000  # 5 segundos
+SEND_INTERVAL=300000  # 5 minutos
+SEND_INTERVAL=600000  # 10 minutos (PADRÃO)
 ```
 
 ### Alterar URL da API
@@ -233,7 +234,7 @@ Antes de executar o simulador:
 │                                                         │
 │ 4. Dashboard atualiza automaticamente                  │
 │    └─> Mostra 4 sensores                               │
-│    └─> Valores mudam a cada 10s                        │
+│    └─> Valores mudam a cada 10min                      │
 │    └─> Status: operational                             │
 └─────────────────────────────────────────────────────────┘
 ```
