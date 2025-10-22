@@ -1,30 +1,29 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
-const nodemailer = require("nodemailer");
-const { enviarCodigoEmail } = require("../services/serviceAuthEmail");
+const {
+  enviarCodigoEmail,
+  enviarEmailBoasVindas,
+  enviarEmailLogin,
+  enviarEmailAlteracaoPerfil
+} = require("../services/serviceAuthEmail");
 
+// Armazenamento temporário de códigos 2FA (em produção, usar Redis)
+const twoFactorStore = new Map();
 
 function gerarCodigo() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-const sendEmailVerificationCode = async (req, res) => {
-  try {
-    const { email } = req.body;
-    if (!email) return res.status(400).json({ message: "Email é obrigatório" });
- 
-    const code = gerarCodigo();
-    const expiresAt = Date.now() + 10 * 60 * 1000; // 10 min
-    emailVerificationStore.set(email, { code, expiresAt });
- 
-    await enviarCodigoEmail(email, code);
-    return res.json({ message: "Código enviado" });
-  } catch (err) {
-    console.error("sendEmailVerificationCode error:", err);
-    return res.status(500).json({ message: "Erro ao enviar código" });
+// Limpar códigos expirados a cada 5 minutos
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, value] of twoFactorStore.entries()) {
+    if (value.expiresAt < now) {
+      twoFactorStore.delete(key);
+    }
   }
-};
+}, 5 * 60 * 1000);
 
 const register = async (req, res) => {
   const { name, email, pass } = req.body;
@@ -45,81 +44,8 @@ const register = async (req, res) => {
 
     await user.save();
 
-    const For = email;
-    const subject = "Usuário registrado com sucesso - Watery Soil";
-    const text = `Olá ${name} ! Novo usuário cadastrado com sucesso!`;
-    const html = `  <!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Novo Login no Watery Soil</title>
-</head>
-<body style="margin: 0; padding: 0; background-color: #f4f4f4;">
-
-    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="table-layout: fixed; background-color: #f4f4f4;">
-        <tr>
-            <td align="center" style="padding: 20px 0;">
-                
-                <table border="0" cellpadding="0" cellspacing="0" width="600" style="background-color: #ffffff; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                    
-                    <tr>
-                        <td align="center" style="background-color: rgb(104, 212, 119); padding: 20px 0; border-radius: 8px 8px 0 0;">
-                            <h1 style="color: white; font-weight: 700; margin: 0; font-family: Arial, sans-serif; font-size: 28px;">Watery Soil</h1>
-                        </td>
-                    </tr>
-                    
-                    <tr>
-                        <td style="padding: 40px 30px; text-align: center;">
-                            
-                            <h2 style="color: #333333; font-weight: 600; margin-top: 0; margin-bottom: 20px; font-family: Arial, sans-serif; font-size: 24px;">Alteração Cadastral efetuada com Sucesso!</h2>
-                            
-                            <p style="color: black; font-family: 'Courier New', Courier, monospace; font-weight: 400; font-size: 16px; line-height: 1.5; margin-bottom: 0;">
-                                O usuário (${user}) com o e-mail:
-                            </p>
-                            
-                            <p style="color: rgb(104, 212, 119); font-family: 'Courier New', Courier, monospace; font-weight: 700; font-size: 18px; margin-top: 5px;">
-                                ${email} </p>
-                            
-                            <p style="color: black; font-family: 'Courier New', Courier, monospace; font-weight: 400; font-size: 16px; line-height: 1.5; margin-top: 20px;">
-                                Acabou de efetuar uma mudança nos dados cadastrais!
-                            </p>
-
-                        </td>
-                    </tr>
-                    
-                    <tr>
-                        <td align="center" style="padding: 15px 30px; border-top: 1px solid #eeeeee;">
-                            <p style="color: #999999; font-family: Arial, sans-serif; font-size: 12px; margin: 0;">
-                                Esta é uma notificação automática. Por favor, não responda a este e-mail.
-                            </p>
-                        </td>
-                    </tr>
-
-                </table>
-            </td>
-        </tr>
-    </table>
-
-</body>
-</html>
-`;
-
-    const transportador = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    });
-
-    const info = await transportador.sendMail({
-      from: process.env.EMAIL_USER,
-      to: For,
-      subject: subject,
-      text: text,
-      html: html,
-    });
+    // Enviar email de boas-vindas
+    await enviarEmailBoasVindas(email, name);
 
     const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET, {
       expiresIn: "1d",
@@ -147,91 +73,43 @@ const login = async (req, res) => {
       return res.status(400).json({ message: "Email ou senha incorretos" });
     }
 
+    // Verificar se 2FA está ativado
+    if (user.twoFactorEnabled) {
+      // Gerar código 2FA
+      const code = gerarCodigo();
+      const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutos
+
+      // Armazenar código temporariamente
+      twoFactorStore.set(email, { code, expiresAt, userId: user._id.toString() });
+
+      // Enviar código por email
+      await enviarCodigoEmail(email, code);
+
+      // Retornar resposta indicando que 2FA é necessário
+      return res.status(200).json({
+        requires2FA: true,
+        message: "Código de verificação enviado para seu email"
+      });
+    }
+
+    // Se 2FA não está ativado, fazer login normal
     const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET, {
       expiresIn: "1d",
     });
 
     const { password: _, ...userData } = user.toObject();
 
-    const For = email;
-    const subject = "Usuario Logado com Sucesso - Watery Soil";
-    const text = `Olá o usuário com o email: ${email} acaba de efetuar um Login`;
-    const html = `
-    <!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Novo Login no Watery Soil</title>
-</head>
-<body style="margin: 0; padding: 0; background-color: #f4f4f4;">
-
-    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="table-layout: fixed; background-color: #f4f4f4;">
-        <tr>
-            <td align="center" style="padding: 20px 0;">
-                
-                <table border="0" cellpadding="0" cellspacing="0" width="600" style="background-color: #ffffff; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                    
-                    <tr>
-                        <td align="center" style="background-color: rgb(104, 212, 119); padding: 20px 0; border-radius: 8px 8px 0 0;">
-                            <h1 style="color: white; font-weight: 700; margin: 0; font-family: Arial, sans-serif; font-size: 28px;">Watery Soil</h1>
-                        </td>
-                    </tr>
-                    
-                    <tr>
-                        <td style="padding: 40px 30px; text-align: center;">
-                            
-                            <h2 style="color: #333333; font-weight: 600; margin-top: 0; margin-bottom: 20px; font-family: Arial, sans-serif; font-size: 24px;">Login Efetuado!</h2>
-                            
-                            <p style="color: black; font-family: 'Courier New', Courier, monospace; font-weight: 400; font-size: 16px; line-height: 1.5; margin-bottom: 0;">
-                                O usuário com o e-mail:
-                            </p>
-                            
-                            <p style="color: rgb(104, 212, 119); font-family: 'Courier New', Courier, monospace; font-weight: 700; font-size: 18px; margin-top: 5px;">
-                                ${email} </p>
-                            
-                            <p style="color: black; font-family: 'Courier New', Courier, monospace; font-weight: 400; font-size: 16px; line-height: 1.5; margin-top: 20px;">
-                                acabou de efetuar o login.
-                            </p>
-
-                        </td>
-                    </tr>
-                    
-                    <tr>
-                        <td align="center" style="padding: 15px 30px; border-top: 1px solid #eeeeee;">
-                            <p style="color: #999999; font-family: Arial, sans-serif; font-size: 12px; margin: 0;">
-                                Esta é uma notificação automática. Por favor, não responda a este e-mail.
-                            </p>
-                        </td>
-                    </tr>
-
-                </table>
-            </td>
-        </tr>
-    </table>
-
-</body>
-</html>
-`;
-
-    const transportador = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
+    // Enviar email de notificação de login
+    const timestamp = new Date().toLocaleString('pt-BR', {
+      timeZone: 'America/Sao_Paulo',
+      dateStyle: 'short',
+      timeStyle: 'medium'
     });
+    await enviarEmailLogin(email, timestamp);
 
-    const info = await transportador.sendMail({
-      from: process.env.EMAIL_USER,
-      to: For,
-      subject: subject,
-      text: text,
-      html: html,
-    });
-
-    return res.status(200).json({ info, token, user: userData });
+    return res.status(200).json({ token, user: userData });
   } catch (error) {
+    console.error("Erro no login:", error);
     return res.status(500).json({ message: "Erro no servidor" });
   }
 };
@@ -278,82 +156,8 @@ const updateProfile = async (req, res) => {
       updateData.avatar = `data:${req.file.mimetype};base64,${avatar}`;
     }
 
-    const For = email;
-    const subject = "Dados de Cadastros alterados - Watery Soil";
-    const text = `Olá ${name} ! Houve uma edição dos dados cadastrais`;
-    const html = `
-    <!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Novo Login no Watery Soil</title>
-</head>
-<body style="margin: 0; padding: 0; background-color: #f4f4f4;">
-
-    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="table-layout: fixed; background-color: #f4f4f4;">
-        <tr>
-            <td align="center" style="padding: 20px 0;">
-                
-                <table border="0" cellpadding="0" cellspacing="0" width="600" style="background-color: #ffffff; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                    
-                    <tr>
-                        <td align="center" style="background-color: rgb(104, 212, 119); padding: 20px 0; border-radius: 8px 8px 0 0;">
-                            <h1 style="color: white; font-weight: 700; margin: 0; font-family: Arial, sans-serif; font-size: 28px;">Watery Soil</h1>
-                        </td>
-                    </tr>
-                    
-                    <tr>
-                        <td style="padding: 40px 30px; text-align: center;">
-                            
-                            <h2 style="color: #333333; font-weight: 600; margin-top: 0; margin-bottom: 20px; font-family: Arial, sans-serif; font-size: 24px;">Alteração Cadastral efetuada com Sucesso!</h2>
-                            
-                            <p style="color: black; font-family: 'Courier New', Courier, monospace; font-weight: 400; font-size: 16px; line-height: 1.5; margin-bottom: 0;">
-                                O usuário (${user}) com o e-mail:
-                            </p>
-                            
-                            <p style="color: rgb(104, 212, 119); font-family: 'Courier New', Courier, monospace; font-weight: 700; font-size: 18px; margin-top: 5px;">
-                                ${email} </p>
-                            
-                            <p style="color: black; font-family: 'Courier New', Courier, monospace; font-weight: 400; font-size: 16px; line-height: 1.5; margin-top: 20px;">
-                                Acabou de efetuar uma mudança nos dados cadastrais!
-                            </p>
-
-                        </td>
-                    </tr>
-                    
-                    <tr>
-                        <td align="center" style="padding: 15px 30px; border-top: 1px solid #eeeeee;">
-                            <p style="color: #999999; font-family: Arial, sans-serif; font-size: 12px; margin: 0;">
-                                Esta é uma notificação automática. Por favor, não responda a este e-mail.
-                            </p>
-                        </td>
-                    </tr>
-
-                </table>
-            </td>
-        </tr>
-    </table>
-
-</body>
-</html>
-`;
-
-    const transportador = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    });
-
-    const info = await transportador.sendMail({
-      from: process.env.EMAIL_USER,
-      to: For,
-      subject: subject,
-      text: text,
-      html: html,
-    });
+    // Enviar email de notificação de alteração de perfil
+    await enviarEmailAlteracaoPerfil(user.email, user.name);
 
     // Atualiza o usuário no banco
     const updatedUser = await User.findByIdAndUpdate(
@@ -363,7 +167,6 @@ const updateProfile = async (req, res) => {
     ).select("-password");
 
     return res.status(200).json({
-      info,
       message: "Perfil atualizado com sucesso!",
       user: updatedUser,
     });
@@ -533,7 +336,6 @@ const changePassword = async (req, res) => {
     });
 
     return res.status(200).json({
-      info,
       message: "Senha alterada com sucesso!",
     });
   } catch (error) {
@@ -542,9 +344,98 @@ const changePassword = async (req, res) => {
   }
 };
 
+// Verificar código 2FA
+const verify2FACode = async (req, res) => {
+  const { email, code } = req.body;
+
+  try {
+    if (!email || !code) {
+      return res.status(400).json({ message: "Email e código são obrigatórios" });
+    }
+
+    // Buscar código armazenado
+    const storedData = twoFactorStore.get(email);
+
+    if (!storedData) {
+      return res.status(400).json({ message: "Código inválido ou expirado" });
+    }
+
+    // Verificar se código expirou
+    if (Date.now() > storedData.expiresAt) {
+      twoFactorStore.delete(email);
+      return res.status(400).json({ message: "Código expirado. Solicite um novo código." });
+    }
+
+    // Verificar se código está correto
+    if (storedData.code !== code) {
+      return res.status(400).json({ message: "Código incorreto" });
+    }
+
+    // Código válido - buscar usuário e gerar token
+    const user = await User.findById(storedData.userId).select("-password");
+
+    if (!user) {
+      return res.status(404).json({ message: "Usuário não encontrado" });
+    }
+
+    // Gerar token JWT
+    const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET, {
+      expiresIn: "1d",
+    });
+
+    // Remover código usado
+    twoFactorStore.delete(email);
+
+    // Enviar email de notificação de login
+    const timestamp = new Date().toLocaleString('pt-BR', {
+      timeZone: 'America/Sao_Paulo',
+      dateStyle: 'short',
+      timeStyle: 'medium'
+    });
+    await enviarEmailLogin(email, timestamp);
+
+    return res.status(200).json({ token, user });
+  } catch (error) {
+    console.error("Erro ao verificar código 2FA:", error);
+    return res.status(500).json({ message: "Erro no servidor" });
+  }
+};
+
+// Toggle 2FA (ativar/desativar)
+const toggle2FA = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { enabled } = req.body;
+
+    if (typeof enabled !== 'boolean') {
+      return res.status(400).json({ message: "Campo 'enabled' deve ser boolean" });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { twoFactorEnabled: enabled },
+      { new: true }
+    ).select("-password");
+
+    if (!user) {
+      return res.status(404).json({ message: "Usuário não encontrado" });
+    }
+
+    return res.status(200).json({
+      message: `Autenticação em duas etapas ${enabled ? 'ativada' : 'desativada'} com sucesso`,
+      twoFactorEnabled: user.twoFactorEnabled
+    });
+  } catch (error) {
+    console.error("Erro ao alterar 2FA:", error);
+    return res.status(500).json({ message: "Erro no servidor" });
+  }
+};
+
 module.exports = {
   register,
   login,
+  verify2FACode,
+  toggle2FA,
   getProfile,
   updateProfile,
   uploadAvatar,

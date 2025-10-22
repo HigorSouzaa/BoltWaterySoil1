@@ -16,8 +16,10 @@ export interface User {
   }
   
   export interface AuthResponse {
-    token: string;
-    user: User;
+    token?: string;
+    user?: User;
+    requires2FA?: boolean;
+    message?: string;
   }
   
   export interface AuthContextType {

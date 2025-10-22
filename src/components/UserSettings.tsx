@@ -136,6 +136,12 @@ export const UserSettings: React.FC = () => {
     try {
       const data = await userService.getProfile();
       setUserProfile(data.user);
+
+      // Carregar configuração de 2FA do usuário
+      setSecuritySettings(prev => ({
+        ...prev,
+        twoFactorEnabled: data.user.twoFactorEnabled || false
+      }));
     } catch (error) {
       console.error("Error loading user data:", error);
     } finally {
@@ -150,6 +156,12 @@ export const UserSettings: React.FC = () => {
         const data = await userService.getProfile();
         console.log("Avatar recebido:", data.user.avatar?.substring(0, 50)); // Mostra início da string
         setUserProfile(data.user);
+
+        // Carregar configuração de 2FA do usuário
+        setSecuritySettings(prev => ({
+          ...prev,
+          twoFactorEnabled: data.user.twoFactorEnabled || false
+        }));
       } catch (error) {
         console.error(error);
       }
@@ -218,14 +230,28 @@ export const UserSettings: React.FC = () => {
   const handleSaveSecurity = async () => {
     setSaving(true);
     try {
+      // Importar authService dinamicamente
+      const authService = (await import('../services/authService')).default;
+
+      // Atualizar 2FA no backend
+      await authService.toggle2FA(securitySettings.twoFactorEnabled);
+
+      // Salvar outras configurações localmente
       localStorage.setItem(
         "securitySettings",
         JSON.stringify(securitySettings)
       );
-      notification.success('Segurança atualizada!', 'Suas configurações de segurança foram salvas.');
+
+      notification.success(
+        'Segurança atualizada!',
+        `Autenticação em duas etapas ${securitySettings.twoFactorEnabled ? 'ativada' : 'desativada'} com sucesso.`
+      );
     } catch (error) {
       console.error("Error saving security settings:", error);
-      notification.error('Erro ao salvar', 'Não foi possível salvar as configurações de segurança.');
+      notification.error(
+        'Erro ao salvar',
+        error instanceof Error ? error.message : 'Não foi possível salvar as configurações de segurança.'
+      );
     } finally {
       setSaving(false);
     }

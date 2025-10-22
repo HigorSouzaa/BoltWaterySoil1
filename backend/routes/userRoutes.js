@@ -2,6 +2,8 @@ const express = require("express");
 const {
   register,
   login,
+  verify2FACode,
+  toggle2FA,
   updateProfile,
   uploadAvatar,
   getProfile,
@@ -15,9 +17,11 @@ const router = express.Router();
 //  Rotas publicas
 router.post("/register", register);
 router.post("/login", login);
+router.post("/verify-2fa", verify2FACode);
 
 // Rotas protegidas (requerem autenticação)
 router.put("/password", authenticateToken, changePassword);
+router.post("/toggle-2fa", authenticateToken, toggle2FA);
 
 router.get("/profile", authenticateToken, getProfile);
 router.put(

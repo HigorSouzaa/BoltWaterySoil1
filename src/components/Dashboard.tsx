@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from "react";
-import  ValidationEmail  from "./ValidationEmail";
 import {
   Droplets,
   Leaf,
@@ -67,7 +66,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     | "modules"
     | "maintenance"
     | "settings"
-    | "ValidationEmail"
   >("dashboard");
   const [activeEnvironment, setActiveEnvironment] =
     useState<DashboardEnvironment | null>(null);
@@ -400,11 +398,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
                 onClick={() => setCurrentView("dashboard")}
                 className="flex items-center space-x-2 hover:opacity-80 transition-opacity"
               >
-                <button
-                  onClick={() => setCurrentView("ValidationEmail")}
-                  className="flex items-center space-x-2 hover:opacity-80 transition-opacity bg-slate-600 w-10 h-10"
-                />
-
                 <Droplets className="h-8 w-8 text-blue-600" />
                 <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">
                   WaterySoil
@@ -482,8 +475,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
         <MaintenanceSchedule />
       ) : currentView === "settings" ? (
         <UserSettings />
-      ) : currentView === "ValidationEmail" ? (
-        <ValidationEmail />
       ) : (
         // O bloco 'else' (renderização do dashboard)
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

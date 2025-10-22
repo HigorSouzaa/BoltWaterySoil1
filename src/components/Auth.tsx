@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Droplets, Mail, Lock, User, ArrowLeft, AlertCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext'; // Import atualizado
+import TwoFactorAuth from './TwoFactorAuth';
+import authService from '../services/authService';
 
 interface AuthProps {
   onLogin: () => void;
@@ -10,6 +12,11 @@ interface AuthProps {
 const Auth: React.FC<AuthProps> = ({ onLogin, onBackToLanding }) => {
   const { login, register, isLoading, error, clearError } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
+  const [show2FA, setShow2FA] = useState(false);
+  const [twoFAEmail, setTwoFAEmail] = useState('');
+  const [twoFAError, setTwoFAError] = useState<string | null>(null);
+  const [twoFALoading, setTwoFALoading] = useState(false);
+  const [loginLoading, setLoginLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -19,33 +26,97 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onBackToLanding }) => {
   // Limpar erro quando trocar de modo (login/registro)
   useEffect(() => {
     clearError();
+    setTwoFAError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLogin]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Prevenir múltiplos cliques
+    if (loginLoading || isLoading) return;
+
     try {
       if (isLogin) {
-        await login({
+        setLoginLoading(true);
+
+        const response = await authService.login({
           email: formData.email,
           pass: formData.password
         });
+
+        // Verificar se precisa de 2FA
+        if (response.requires2FA) {
+          setTwoFAEmail(formData.email);
+          setShow2FA(true);
+          setLoginLoading(false);
+          return;
+        }
+
+        // Login normal sem 2FA
+        if (response.token && response.user) {
+          authService.saveAuthData(response.token, response.user);
+          setLoginLoading(false);
+          onLogin();
+        } else {
+          throw new Error('Resposta inválida do servidor');
+        }
       } else {
         await register({
           name: formData.name,
           email: formData.email,
           pass: formData.password
         });
+
+        // Sucesso - chama callback do pai
+        onLogin();
       }
-      
-      // Sucesso - chama callback do pai
-      onLogin();
     } catch (err) {
-      // Erro já foi tratado no contexto
+      setLoginLoading(false);
+      // Erro já foi tratado no contexto ou será mostrado
       console.error('Erro na autenticação:', err);
     }
   };
+
+  const handleVerify2FA = async (code: string) => {
+    setTwoFALoading(true);
+    setTwoFAError(null);
+
+    try {
+      const response = await authService.verify2FA(twoFAEmail, code);
+
+      if (response.token && response.user) {
+        authService.saveAuthData(response.token, response.user);
+        onLogin();
+      } else {
+        throw new Error('Resposta inválida do servidor');
+      }
+    } catch (err) {
+      setTwoFAError(err instanceof Error ? err.message : 'Código inválido');
+    } finally {
+      setTwoFALoading(false);
+    }
+  };
+
+  const handleBack2FA = () => {
+    setShow2FA(false);
+    setTwoFAEmail('');
+    setTwoFAError(null);
+    setFormData({ ...formData, password: '' });
+  };
+
+  // Se está mostrando 2FA, renderizar componente 2FA
+  if (show2FA) {
+    return (
+      <TwoFactorAuth
+        email={twoFAEmail}
+        onVerify={handleVerify2FA}
+        onBack={handleBack2FA}
+        isLoading={twoFALoading}
+        error={twoFAError}
+      />
+    );
+  }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -116,7 +187,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onBackToLanding }) => {
                     name="name"
                     value={formData.name}
                     onChange={handleInputChange}
-                    disabled={isLoading}
+                    disabled={isLoading || loginLoading}
                     className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 disabled:bg-gray-50"
                     placeholder="Seu nome completo"
                     required
@@ -137,7 +208,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onBackToLanding }) => {
                   name="email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  disabled={isLoading}
+                  disabled={isLoading || loginLoading}
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 disabled:bg-gray-50"
                   placeholder="seu@email.com"
                   required
@@ -157,7 +228,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onBackToLanding }) => {
                   name="password"
                   value={formData.password}
                   onChange={handleInputChange}
-                  disabled={isLoading}
+                  disabled={isLoading || loginLoading}
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 disabled:bg-gray-50"
                   placeholder="••••••••"
                   required
@@ -179,10 +250,10 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onBackToLanding }) => {
           
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || loginLoading}
               className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 px-4 rounded-xl font-semibold hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             >
-              {isLoading ? 'Carregando...' : (isLogin ? 'Entrar' : 'Criar Conta')}
+              {(isLoading || loginLoading) ? 'Carregando...' : (isLogin ? 'Entrar' : 'Criar Conta')}
             </button>
           </form>
 

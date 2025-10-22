@@ -44,6 +44,52 @@ class AuthService {
     return data;
   }
 
+  async verify2FA(email: string, code: string): Promise<AuthResponse> {
+    const response = await fetch(`${this.baseURL}/users/verify-2fa`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, code }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Erro ao verificar código');
+    }
+
+    return data;
+  }
+
+  async toggle2FA(enabled: boolean): Promise<{ message: string; twoFactorEnabled: boolean }> {
+    const token = this.getStoredToken();
+
+    const response = await fetch(`${this.baseURL}/users/toggle-2fa`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ enabled }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Erro ao alterar 2FA');
+    }
+
+    // Atualizar usuário no localStorage
+    const user = this.getStoredUser();
+    if (user) {
+      user.twoFactorEnabled = data.twoFactorEnabled;
+      localStorage.setItem('user', JSON.stringify(user));
+    }
+
+    return data;
+  }
+
   // Métodos para localStorage
   saveAuthData(token: string, user: any): void {
     localStorage.setItem('token', token);
