@@ -339,6 +339,14 @@ const getAggregatedForCharts = async (req, res) => {
       });
 
       console.log('📊 Módulos encontrados no setor:', modules.length);
+      if (modules.length > 0) {
+        console.log('📊 Detalhes dos módulos:', modules.map(m => ({
+          id: m._id,
+          name: m.name,
+          mac: m.mac_address,
+          user_id: m.user_id
+        })));
+      }
 
       if (modules.length === 0) {
         console.log('⚠️ Nenhum módulo encontrado no setor, buscando todos os módulos do usuário');
@@ -347,6 +355,7 @@ const getAggregatedForCharts = async (req, res) => {
           user_id: userId,
           is_active: true
         });
+        console.log('📊 Total de módulos do usuário:', allModules.length);
         moduleIds = allModules.map(m => m._id);
       } else {
         moduleIds = modules.map(m => m._id);
@@ -358,35 +367,85 @@ const getAggregatedForCharts = async (req, res) => {
         user_id: userId,
         is_active: true
       });
+      console.log('📊 Total de módulos do usuário:', allModules.length);
+      if (allModules.length > 0) {
+        console.log('📊 Detalhes dos módulos:', allModules.map(m => ({
+          id: m._id,
+          name: m.name,
+          mac: m.mac_address,
+          user_id: m.user_id
+        })));
+      }
       moduleIds = allModules.map(m => m._id);
     }
 
     console.log('📊 Total de módulos para buscar dados:', moduleIds.length);
     console.log('📊 IDs dos módulos:', moduleIds);
 
-    // Se não houver módulos, buscar TODOS os dados da coleção data_sensors
-    let query = {};
-
-    if (moduleIds.length > 0) {
-      query.module_id = { $in: moduleIds };
+    // ⚠️ IMPORTANTE: Se o usuário não tem módulos, retornar vazio
+    if (moduleIds.length === 0) {
+      console.log('⚠️ Usuário não possui módulos cadastrados');
+      return res.status(200).json({
+        success: true,
+        data: {
+          labels: [],
+          ph: [],
+          moisture: [],
+          temperature: [],
+          npk: []
+        },
+        message: "Nenhum módulo encontrado para este usuário"
+      });
     }
+
+    // Query SEMPRE filtra por módulos do usuário
+    let query = {
+      module_id: { $in: moduleIds }
+    };
 
     // Definir período
     const now = new Date();
-    let start, dataPoints, groupBy;
+    let start, dataPoints, groupBy, labels = [];
 
     if (timeRange === 'daily') {
-      start = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-      dataPoints = 12; // A cada 2 horas
+      // Últimas 24 horas - de 00:00 até 23:59 (12 pontos de 2 em 2 horas)
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Início do dia (00:00)
+      start = today;
+
+      const endOfDay = new Date(today);
+      endOfDay.setHours(23, 59, 59, 999); // Fim do dia (23:59)
+      now.setTime(endOfDay.getTime());
+
+      dataPoints = 12; // 00:00, 02:00, 04:00, ..., 22:00
       groupBy = 2 * 60 * 60 * 1000; // 2 horas em ms
+
+      // Gerar labels fixos: 00:00, 02:00, 04:00, ..., 22:00
+      for (let i = 0; i < dataPoints; i++) {
+        const hour = i * 2;
+        labels.push(`${hour.toString().padStart(2, '0')}:00`);
+      }
     } else if (timeRange === 'weekly') {
       start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
       dataPoints = 7; // 1 por dia
       groupBy = 24 * 60 * 60 * 1000; // 1 dia em ms
+
+      // Gerar labels: Dom, Seg, Ter, Qua, Qui, Sex, Sáb
+      const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+      for (let i = 0; i < dataPoints; i++) {
+        const date = new Date(start.getTime() + i * groupBy);
+        labels.push(days[date.getDay()]);
+      }
     } else {
       start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
       dataPoints = 30; // 1 por dia
       groupBy = 24 * 60 * 60 * 1000; // 1 dia em ms
+
+      // Gerar labels: DD/MM
+      for (let i = 0; i < dataPoints; i++) {
+        const date = new Date(start.getTime() + i * groupBy);
+        labels.push(`${date.getDate()}/${date.getMonth() + 1}`);
+      }
     }
 
     console.log('📊 Período de busca:', { start, now });
@@ -402,17 +461,18 @@ const getAggregatedForCharts = async (req, res) => {
 
     console.log('📊 Total de leituras encontradas:', sensorData.length);
 
-    // Se não encontrar dados no período, buscar os últimos dados disponíveis
+    // Se não encontrar dados no período, buscar os últimos dados disponíveis DO USUÁRIO
     if (sensorData.length === 0) {
-      console.log('⚠️ Nenhum dado encontrado no período, buscando últimos dados disponíveis');
+      console.log('⚠️ Nenhum dado encontrado no período, buscando últimos dados disponíveis do usuário');
       const lastData = await DataSensors.find({
+        module_id: { $in: moduleIds }, // ← FILTRAR POR MÓDULOS DO USUÁRIO!
         is_active: true,
         'validation.is_valid': true
       })
       .sort({ reading_timestamp: -1 })
       .limit(100);
 
-      console.log('📊 Últimos dados encontrados:', lastData.length);
+      console.log('📊 Últimos dados do usuário encontrados:', lastData.length);
 
       if (lastData.length > 0) {
         // Usar os últimos dados encontrados
@@ -421,7 +481,6 @@ const getAggregatedForCharts = async (req, res) => {
     }
 
     // Agrupar dados por período
-    const labels = [];
     const phData = [];
     const moistureData = [];
     const temperatureData = [];
@@ -467,16 +526,6 @@ const getAggregatedForCharts = async (req, res) => {
           npkCount++;
         }
       });
-
-      // Adicionar label
-      if (timeRange === 'daily') {
-        labels.push(intervalStart.getHours().toString().padStart(2, '0') + ':00');
-      } else if (timeRange === 'weekly') {
-        const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-        labels.push(days[intervalStart.getDay()]);
-      } else {
-        labels.push(`${intervalStart.getDate()}/${intervalStart.getMonth() + 1}`);
-      }
 
       // Adicionar médias (ou null se não houver dados)
       phData.push(phCount > 0 ? phSum / phCount : null);
@@ -524,14 +573,43 @@ const getAggregatedForCharts = async (req, res) => {
 // GET /api/v1/data-sensors/all - Buscar TODOS os dados em formato de array
 const getAllSensorData = async (req, res) => {
   try {
+    const userId = req.user._id;
     const { limit = 100, page = 1 } = req.query;
     const skip = (page - 1) * limit;
 
     console.log('📊 [getAllSensorData] Buscando todos os dados');
+    console.log('📊 userId:', userId);
     console.log('📊 Limit:', limit, 'Page:', page);
 
-    // Buscar todos os dados da coleção data_sensors
+    // 1. Buscar módulos do usuário
+    const modules = await WaterySoilModule.find({
+      user_id: userId,
+      is_active: true
+    });
+
+    const moduleIds = modules.map(m => m._id);
+
+    console.log('📊 Total de módulos do usuário:', moduleIds.length);
+
+    // Se não houver módulos, retornar vazio
+    if (moduleIds.length === 0) {
+      console.log('⚠️ Usuário não possui módulos cadastrados');
+      return res.status(200).json({
+        success: true,
+        data: [],
+        pagination: {
+          total: 0,
+          page: parseInt(page),
+          limit: parseInt(limit),
+          totalPages: 0
+        },
+        message: "Nenhum módulo encontrado para este usuário"
+      });
+    }
+
+    // 2. Buscar dados APENAS dos módulos do usuário
     const sensorData = await DataSensors.find({
+      module_id: { $in: moduleIds },
       is_active: true,
       'validation.is_valid': true
     })
@@ -540,13 +618,14 @@ const getAllSensorData = async (req, res) => {
     .skip(skip)
     .lean(); // .lean() retorna objetos JavaScript simples (mais rápido)
 
-    // Contar total de documentos
+    // Contar total de documentos do usuário
     const total = await DataSensors.countDocuments({
+      module_id: { $in: moduleIds },
       is_active: true,
       'validation.is_valid': true
     });
 
-    console.log('📊 Total de documentos:', total);
+    console.log('📊 Total de documentos do usuário:', total);
     console.log('📊 Documentos retornados:', sensorData.length);
 
     // Formatar dados em array simples para facilitar leitura
