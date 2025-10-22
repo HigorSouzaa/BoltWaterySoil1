@@ -317,12 +317,286 @@ const deleteReading = async (req, res) => {
   }
 };
 
+// GET /api/v1/data-sensors/aggregated - Buscar dados agregados para gráficos
+const getAggregatedForCharts = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { sectorId, timeRange = 'daily' } = req.query;
+
+    console.log('📊 [getAggregatedForCharts] Iniciando busca de dados agregados');
+    console.log('📊 userId:', userId);
+    console.log('📊 sectorId:', sectorId);
+    console.log('📊 timeRange:', timeRange);
+
+    let moduleIds = [];
+
+    if (sectorId) {
+      // Buscar módulos do setor específico
+      const modules = await WaterySoilModule.find({
+        user_id: userId,
+        sector_id: sectorId,
+        is_active: true
+      });
+
+      console.log('📊 Módulos encontrados no setor:', modules.length);
+
+      if (modules.length === 0) {
+        console.log('⚠️ Nenhum módulo encontrado no setor, buscando todos os módulos do usuário');
+        // Se não encontrar módulos no setor, buscar todos os módulos do usuário
+        const allModules = await WaterySoilModule.find({
+          user_id: userId,
+          is_active: true
+        });
+        moduleIds = allModules.map(m => m._id);
+      } else {
+        moduleIds = modules.map(m => m._id);
+      }
+    } else {
+      // Se não passar sectorId, buscar todos os módulos do usuário
+      console.log('📊 Buscando todos os módulos do usuário');
+      const allModules = await WaterySoilModule.find({
+        user_id: userId,
+        is_active: true
+      });
+      moduleIds = allModules.map(m => m._id);
+    }
+
+    console.log('📊 Total de módulos para buscar dados:', moduleIds.length);
+    console.log('📊 IDs dos módulos:', moduleIds);
+
+    // Se não houver módulos, buscar TODOS os dados da coleção data_sensors
+    let query = {};
+
+    if (moduleIds.length > 0) {
+      query.module_id = { $in: moduleIds };
+    }
+
+    // Definir período
+    const now = new Date();
+    let start, dataPoints, groupBy;
+
+    if (timeRange === 'daily') {
+      start = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      dataPoints = 12; // A cada 2 horas
+      groupBy = 2 * 60 * 60 * 1000; // 2 horas em ms
+    } else if (timeRange === 'weekly') {
+      start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      dataPoints = 7; // 1 por dia
+      groupBy = 24 * 60 * 60 * 1000; // 1 dia em ms
+    } else {
+      start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      dataPoints = 30; // 1 por dia
+      groupBy = 24 * 60 * 60 * 1000; // 1 dia em ms
+    }
+
+    console.log('📊 Período de busca:', { start, now });
+
+    // Buscar dados do período
+    query.reading_timestamp = { $gte: start, $lte: now };
+    query.is_active = true;
+    query['validation.is_valid'] = true;
+
+    console.log('📊 Query MongoDB:', JSON.stringify(query, null, 2));
+
+    const sensorData = await DataSensors.find(query).sort({ reading_timestamp: 1 });
+
+    console.log('📊 Total de leituras encontradas:', sensorData.length);
+
+    // Se não encontrar dados no período, buscar os últimos dados disponíveis
+    if (sensorData.length === 0) {
+      console.log('⚠️ Nenhum dado encontrado no período, buscando últimos dados disponíveis');
+      const lastData = await DataSensors.find({
+        is_active: true,
+        'validation.is_valid': true
+      })
+      .sort({ reading_timestamp: -1 })
+      .limit(100);
+
+      console.log('📊 Últimos dados encontrados:', lastData.length);
+
+      if (lastData.length > 0) {
+        // Usar os últimos dados encontrados
+        sensorData.push(...lastData.reverse());
+      }
+    }
+
+    // Agrupar dados por período
+    const labels = [];
+    const phData = [];
+    const moistureData = [];
+    const temperatureData = [];
+    const npkData = [];
+
+    // Criar intervalos de tempo
+    for (let i = 0; i < dataPoints; i++) {
+      const intervalStart = new Date(start.getTime() + i * groupBy);
+      const intervalEnd = new Date(intervalStart.getTime() + groupBy);
+
+      // Filtrar dados neste intervalo
+      const intervalData = sensorData.filter(d => {
+        const timestamp = new Date(d.reading_timestamp);
+        return timestamp >= intervalStart && timestamp < intervalEnd;
+      });
+
+      // Calcular médias
+      let phSum = 0, phCount = 0;
+      let moistureSum = 0, moistureCount = 0;
+      let tempSum = 0, tempCount = 0;
+      let npkSum = 0, npkCount = 0;
+
+      intervalData.forEach(data => {
+        if (data.sensor_data?.ph?.value) {
+          phSum += data.sensor_data.ph.value;
+          phCount++;
+        }
+        if (data.sensor_data?.soil_moisture?.value) {
+          moistureSum += data.sensor_data.soil_moisture.value;
+          moistureCount++;
+        }
+        if (data.sensor_data?.temperature?.value) {
+          tempSum += data.sensor_data.temperature.value;
+          tempCount++;
+        }
+        if (data.sensor_data?.npk) {
+          const npkAvg = (
+            (data.sensor_data.npk.nitrogen || 0) +
+            (data.sensor_data.npk.phosphorus || 0) +
+            (data.sensor_data.npk.potassium || 0)
+          ) / 3;
+          npkSum += npkAvg;
+          npkCount++;
+        }
+      });
+
+      // Adicionar label
+      if (timeRange === 'daily') {
+        labels.push(intervalStart.getHours().toString().padStart(2, '0') + ':00');
+      } else if (timeRange === 'weekly') {
+        const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+        labels.push(days[intervalStart.getDay()]);
+      } else {
+        labels.push(`${intervalStart.getDate()}/${intervalStart.getMonth() + 1}`);
+      }
+
+      // Adicionar médias (ou null se não houver dados)
+      phData.push(phCount > 0 ? phSum / phCount : null);
+      moistureData.push(moistureCount > 0 ? moistureSum / moistureCount : null);
+      temperatureData.push(tempCount > 0 ? tempSum / tempCount : null);
+      npkData.push(npkCount > 0 ? npkSum / npkCount : null);
+    }
+
+    console.log('📊 Dados agregados gerados:');
+    console.log('  - Labels:', labels.length);
+    console.log('  - pH:', phData.filter(v => v !== null).length, 'valores');
+    console.log('  - Umidade:', moistureData.filter(v => v !== null).length, 'valores');
+    console.log('  - Temperatura:', temperatureData.filter(v => v !== null).length, 'valores');
+    console.log('  - NPK:', npkData.filter(v => v !== null).length, 'valores');
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        labels,
+        ph: phData,
+        moisture: moistureData,
+        temperature: temperatureData,
+        npk: npkData,
+      },
+      meta: {
+        totalReadings: sensorData.length,
+        timeRange,
+        dataPoints,
+        period: {
+          start,
+          end: now
+        }
+      }
+    });
+  } catch (error) {
+    console.error("❌ Erro ao buscar dados agregados:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Erro ao buscar dados agregados",
+      error: error.message
+    });
+  }
+};
+
+// GET /api/v1/data-sensors/all - Buscar TODOS os dados em formato de array
+const getAllSensorData = async (req, res) => {
+  try {
+    const { limit = 100, page = 1 } = req.query;
+    const skip = (page - 1) * limit;
+
+    console.log('📊 [getAllSensorData] Buscando todos os dados');
+    console.log('📊 Limit:', limit, 'Page:', page);
+
+    // Buscar todos os dados da coleção data_sensors
+    const sensorData = await DataSensors.find({
+      is_active: true,
+      'validation.is_valid': true
+    })
+    .sort({ reading_timestamp: -1 })
+    .limit(parseInt(limit))
+    .skip(skip)
+    .lean(); // .lean() retorna objetos JavaScript simples (mais rápido)
+
+    // Contar total de documentos
+    const total = await DataSensors.countDocuments({
+      is_active: true,
+      'validation.is_valid': true
+    });
+
+    console.log('📊 Total de documentos:', total);
+    console.log('📊 Documentos retornados:', sensorData.length);
+
+    // Formatar dados em array simples para facilitar leitura
+    const formattedData = sensorData.map(reading => ({
+      id: reading._id,
+      moduleId: reading.module_id,
+      macAddress: reading.mac_address,
+      serialNumber: reading.serial_number,
+      timestamp: reading.reading_timestamp,
+      ph: reading.sensor_data?.ph?.value || null,
+      moisture: reading.sensor_data?.soil_moisture?.value || null,
+      temperature: reading.sensor_data?.temperature?.value || null,
+      nitrogen: reading.sensor_data?.npk?.nitrogen || null,
+      phosphorus: reading.sensor_data?.npk?.phosphorus || null,
+      potassium: reading.sensor_data?.npk?.potassium || null,
+      batteryLevel: reading.metadata?.battery_level || null,
+      signalStrength: reading.metadata?.signal_strength || null,
+      isValid: reading.validation?.is_valid || false,
+      createdAt: reading.createdAt,
+      updatedAt: reading.updatedAt
+    }));
+
+    return res.status(200).json({
+      success: true,
+      data: formattedData,
+      pagination: {
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    console.error("❌ Erro ao buscar todos os dados:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Erro ao buscar dados dos sensores",
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getModuleHistory,
   getLatestReadings,
   getAverageReadings,
   getHistoryByMAC,
   getModuleStats,
-  deleteReading
+  deleteReading,
+  getAggregatedForCharts,
+  getAllSensorData
 };
 

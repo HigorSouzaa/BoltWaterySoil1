@@ -21,6 +21,7 @@ import { EnvironmentManager } from "./EnvironmentManager";
 import { UserSettings } from "./UserSettings";
 import { WaterySoilModules } from "./WaterySoilModules";
 import { MaintenanceSchedule } from "./MaintenanceSchedule";
+import SensorCharts from "./SensorCharts";
 import environmentService from "../services/environmentService";
 import sectorService from "../services/sectorService";
 import waterySoilModuleService, {
@@ -544,31 +545,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Chart Section */}
             <div className="lg:col-span-2">
-              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-xl font-semibold text-gray-900">
-                    Histórico de Sensores
-                  </h2>
-                  <div className="flex items-center space-x-4">
-                    <select className="text-sm border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                      <option>Últimas 24h</option>
-                      <option>Última semana</option>
-                      <option>Último mês</option>
-                    </select>
-                  </div>
-                </div>
-
-                {/* Simulated Chart Area */}
-                <div className="h-80 bg-gradient-to-br from-blue-50 to-green-50 rounded-xl flex items-center justify-center border-2 border-dashed border-blue-200">
-                  <div className="text-center">
-                    <BarChart3 className="h-16 w-16 text-blue-400 mx-auto mb-4" />
-                    <p className="text-gray-600 mb-2">Gráfico de Tendências</p>
-                    <p className="text-sm text-gray-500">
-                      Dados em tempo real dos sensores IoT
-                    </p>
-                  </div>
-                </div>
-              </div>
+              <SensorCharts sectorId={activeSector?._id || null} />
             </div>
 
             {/* Sidebar */}

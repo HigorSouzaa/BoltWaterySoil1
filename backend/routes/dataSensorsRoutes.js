@@ -6,13 +6,21 @@ const {
   getAverageReadings,
   getHistoryByMAC,
   getModuleStats,
-  deleteReading
+  deleteReading,
+  getAggregatedForCharts,
+  getAllSensorData
 } = require("../controllers/dataSensorsController");
 
 const router = express.Router();
 
 // Todas as rotas precisam de autenticação
 router.use(authenticateToken);
+
+// GET /api/v1/data-sensors/all - Buscar TODOS os dados em formato de array
+router.get("/all", getAllSensorData);
+
+// GET /api/v1/data-sensors/aggregated - Buscar dados agregados para gráficos
+router.get("/aggregated", getAggregatedForCharts);
 
 // GET /api/v1/data-sensors/module/:moduleId - Buscar histórico de um módulo
 router.get("/module/:moduleId", getModuleHistory);

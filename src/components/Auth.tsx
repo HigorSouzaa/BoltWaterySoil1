@@ -10,13 +10,14 @@ interface AuthProps {
 }
 
 const Auth: React.FC<AuthProps> = ({ onLogin, onBackToLanding }) => {
-  const { login, register, isLoading, error, clearError } = useAuth();
+  const { register, isLoading, error, clearError } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [show2FA, setShow2FA] = useState(false);
   const [twoFAEmail, setTwoFAEmail] = useState('');
   const [twoFAError, setTwoFAError] = useState<string | null>(null);
   const [twoFALoading, setTwoFALoading] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -27,6 +28,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onBackToLanding }) => {
   useEffect(() => {
     clearError();
     setTwoFAError(null);
+    setLoginError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLogin]);
 
@@ -36,10 +38,15 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onBackToLanding }) => {
     // Prevenir múltiplos cliques
     if (loginLoading || isLoading) return;
 
+    // Limpar erros anteriores
+    setLoginError(null);
+    clearError();
+
     try {
       if (isLogin) {
         setLoginLoading(true);
 
+        // Primeiro, verificar se precisa de 2FA
         const response = await authService.login({
           email: formData.email,
           pass: formData.password
@@ -62,6 +69,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onBackToLanding }) => {
           throw new Error('Resposta inválida do servidor');
         }
       } else {
+        // Registro - usar o hook do contexto
         await register({
           name: formData.name,
           email: formData.email,
@@ -73,7 +81,9 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onBackToLanding }) => {
       }
     } catch (err) {
       setLoginLoading(false);
-      // Erro já foi tratado no contexto ou será mostrado
+      // Capturar e mostrar o erro
+      const errorMessage = err instanceof Error ? err.message : 'Erro ao fazer login';
+      setLoginError(errorMessage);
       console.error('Erro na autenticação:', err);
     }
   };
@@ -165,10 +175,10 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onBackToLanding }) => {
           </div>
 
           {/* Error Message */}
-          {error && (
+          {(error || loginError) && (
             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3">
               <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0" />
-              <p className="text-red-700 text-sm">{error}</p>
+              <p className="text-red-700 text-sm">{loginError || error}</p>
             </div>
           )}
 
