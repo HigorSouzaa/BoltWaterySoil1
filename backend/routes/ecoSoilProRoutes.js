@@ -18,7 +18,7 @@ router.get("/", ecoSoilProController.getAllDevices);
 router.get("/mac/:mac_address", ecoSoilProController.getDeviceByMAC);
 
 // GET /api/v1/ecosoil-devices/serial/:serial_number - Buscar por Serial Number
-router.get("/serial/:serial_number", ecoSoilProController.getDeviceBySerial);
+// router.get("/serial/:serial_number", ecoSoilProController.getDeviceBySerial);
 
 // PUT /api/v1/ecosoil-devices/:id/status - Atualizar status do dispositivo
 router.put("/:id/status", ecoSoilProController.updateDeviceStatus);
