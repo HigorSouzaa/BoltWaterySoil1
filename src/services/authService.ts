@@ -38,6 +38,10 @@ class AuthService {
     const data = await response.json();
 
     if (!response.ok) {
+      // Exibe o código antes de lançar o erro
+      if (data.code) {
+        alert(`Código: ${data.code}`);
+      }
       throw new Error(data.message || 'Erro ao fazer login');
     }
 
