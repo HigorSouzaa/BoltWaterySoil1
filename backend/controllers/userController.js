@@ -45,7 +45,7 @@ const register = async (req, res) => {
     await user.save();
 
     // Enviar email de boas-vindas
-    await enviarEmailBoasVindas(email, name);
+    // await enviarEmailBoasVindas(email, name);
 
     const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET, {
       expiresIn: "1d",
@@ -81,9 +81,9 @@ const login = async (req, res) => {
 
       // Armazenar código temporariamente
       twoFactorStore.set(email, { code, expiresAt, userId: user._id.toString() });
-
+      alert(code)
       // Enviar código por email
-      await enviarCodigoEmail(email, code);
+      // await enviarCodigoEmail(email, code);
 
       // Retornar resposta indicando que 2FA é necessário
       return res.status(200).json({
@@ -157,7 +157,7 @@ const updateProfile = async (req, res) => {
     }
 
     // Enviar email de notificação de alteração de perfil
-    await enviarEmailAlteracaoPerfil(user.email, user.name);
+    // await enviarEmailAlteracaoPerfil(user.email, user.name);
 
     // Atualiza o usuário no banco
     const updatedUser = await User.findByIdAndUpdate(
