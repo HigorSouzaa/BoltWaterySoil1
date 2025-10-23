@@ -447,10 +447,10 @@ const getWaterySoilModuleByMAC = async (req, res) => {
   }
 };
 
-// PUT /api/v1/waterysoil-modules/:id/sensor-data - Atualizar dados dos sensores (SEM autenticação - para hardware)
+// PUT /api/v1/waterysoil-modules/:id/sensor-data - Atualizar dados dos sensores
 const updateSensorData = async (req, res) => {
   try {
-    const { sensor_data, metadata } = req.body;
+    const { sensor_data, metadata, reading_timestamp } = req.body;
 
     const module = await WaterySoilModule.findOne({
       _id: req.params.id,
@@ -471,6 +471,29 @@ const updateSensorData = async (req, res) => {
     });
 
     // ========================================
+    // DETERMINAR O TIMESTAMP DA LEITURA
+    // ========================================
+    
+    // Prioridade:
+    // 1. reading_timestamp enviado no body
+    // 2. last_update do primeiro sensor disponível
+    // 3. Data atual como fallback
+    
+    let timestampToUse = new Date();
+    
+    if (reading_timestamp) {
+      timestampToUse = new Date(reading_timestamp);
+    } else if (sensor_data?.soil_moisture?.last_update) {
+      timestampToUse = new Date(sensor_data.soil_moisture.last_update);
+    } else if (sensor_data?.temperature?.last_update) {
+      timestampToUse = new Date(sensor_data.temperature.last_update);
+    } else if (sensor_data?.npk?.last_update) {
+      timestampToUse = new Date(sensor_data.npk.last_update);
+    } else if (sensor_data?.ph?.last_update) {
+      timestampToUse = new Date(sensor_data.ph.last_update);
+    }
+
+    // ========================================
     // 1. SALVAR NO HISTÓRICO (DataSensors)
     // ========================================
 
@@ -478,7 +501,7 @@ const updateSensorData = async (req, res) => {
       module_id: module._id,
       mac_address: module.mac_address,
       serial_number: ecoSoilDevice?.serial_number || null,
-      reading_timestamp: new Date(),
+      reading_timestamp: timestampToUse, // ✅ Usa o timestamp correto!
       sensor_data: sensor_data,
       metadata: {
         firmware_version: ecoSoilDevice?.firmware_version || module.firmware_version,
@@ -499,8 +522,8 @@ const updateSensorData = async (req, res) => {
     // ========================================
 
     module.sensor_data = sensor_data;
-    module.status = 'operational'; // Marca como operacional
-    module.last_ping = new Date();
+    module.status = 'operational';
+    module.last_ping = new Date(); // Este pode continuar usando a data atual
 
     await module.save();
 
@@ -530,6 +553,7 @@ const updateSensorData = async (req, res) => {
     });
   }
 };
+
 
 module.exports = {
   getWaterySoilModules,
