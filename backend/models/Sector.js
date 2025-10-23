@@ -5,14 +5,14 @@ const mongoose = require("mongoose");
  * Representa um setor dentro de um ambiente (ex: Setor A, Setor B, etc.)
  */
 const SectorSchema = new mongoose.Schema({
-  name: { 
-    type: String, 
+  name: {
+    type: String,
     required: true,
     trim: true,
     maxlength: 100
   },
-  description: { 
-    type: String, 
+  description: {
+    type: String,
     trim: true,
     maxlength: 500
   },
@@ -37,6 +37,13 @@ const SectorSchema = new mongoose.Schema({
   location: {
     latitude: Number,
     longitude: Number
+  },
+  soil_type: {
+    type: String,
+    enum: ['sand', 'loam', 'clay'],
+    default: 'loam',
+    lowercase: true,
+    trim: true
   }
 }, {
   timestamps: true

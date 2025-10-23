@@ -17,7 +17,8 @@ export const WaterySoilModules: React.FC = () => {
     name: 'Sensor Eco-Soil Pro',
     module_type: 'sensor',
     mac_address: '',
-    configuration: {}
+    configuration: {},
+    soil_type: 'loam'
   });
 
   useEffect(() => {
@@ -79,7 +80,8 @@ export const WaterySoilModules: React.FC = () => {
           name: moduleForm.name,
           module_type: moduleForm.module_type as any,
           mac_address: moduleForm.mac_address || undefined,
-          configuration: moduleForm.configuration
+          configuration: moduleForm.configuration,
+          soil_type: moduleForm.soil_type
         });
         notification.success('Módulo atualizado!', 'As alterações foram salvas com sucesso.');
       } else {
@@ -88,7 +90,8 @@ export const WaterySoilModules: React.FC = () => {
           module_type: moduleForm.module_type as any,
           sector_id: selectedSector,
           mac_address: moduleForm.mac_address || undefined,
-          configuration: moduleForm.configuration
+          configuration: moduleForm.configuration,
+          soil_type: moduleForm.soil_type
         });
         notification.success('Módulo criado!', 'O novo módulo foi adicionado com sucesso.');
       }
@@ -99,7 +102,8 @@ export const WaterySoilModules: React.FC = () => {
         name: 'Sensor Eco-Soil Pro',
         module_type: 'sensor',
         mac_address: '',
-        configuration: {}
+        configuration: {},
+        soil_type: 'loam'
       });
       loadModules();
     } catch (error) {
@@ -156,7 +160,8 @@ export const WaterySoilModules: React.FC = () => {
       name: module.name,
       module_type: module.module_type,
       mac_address: module.mac_address || '',
-      configuration: module.configuration || {}
+      configuration: module.configuration || {},
+      soil_type: (module as any).soil_type || 'loam'
     });
     setShowModal(true);
   };
@@ -368,6 +373,23 @@ export const WaterySoilModules: React.FC = () => {
                   Formato: AA:BB:CC:DD:EE:FF
                 </p>
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Tipo de Solo
+                </label>
+                <select
+                  value={moduleForm.soil_type}
+                  onChange={(e) => setModuleForm({ ...moduleForm, soil_type: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="sand">Arenoso (Sand)</option>
+                  <option value="loam">Franco (Loam) - Padrão</option>
+                  <option value="clay">Argiloso (Clay)</option>
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Afeta as faixas ideais de umidade. Se não definido, usa o tipo do setor.
+                </p>
+              </div>
             </div>
             <div className="flex gap-3 mt-6">
               <button
@@ -378,7 +400,8 @@ export const WaterySoilModules: React.FC = () => {
                     name: 'Sensor Eco-Soil Pro',
                     module_type: 'sensor',
                     mac_address: '',
-                    configuration: {}
+                    configuration: {},
+                    soil_type: 'loam'
                   });
                 }}
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"

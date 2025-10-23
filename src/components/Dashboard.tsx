@@ -8,6 +8,7 @@ import {
   User,
   LogOut,
   TrendingUp,
+  TrendingDown,
   AlertTriangle,
   CheckCircle,
   Activity,
@@ -27,6 +28,17 @@ import sectorService from "../services/sectorService";
 import waterySoilModuleService, {
   WaterySoilModule,
 } from "../services/waterySoilModuleService";
+import {
+  classifyVWC,
+  classifyTemperature,
+  classifyPH,
+  classifyPhosphorus,
+  classifyPotassium,
+  getStatusColor,
+  getStatusTip,
+  type SoilType,
+  type ParameterStatus
+} from "../services/parameterClassification";
 
 interface DashboardProps {
   onLogout: () => void;
@@ -54,6 +66,8 @@ interface SensorData {
   value: number;
   unit: string;
   status: "good" | "warning" | "critical";
+  parameterStatus?: ParameterStatus; // Novo: Ideal/Bom/Ruim
+  statusTip?: string; // Novo: Dica contextual
   trend: "up" | "down" | "stable";
   icon: React.ReactNode;
   color: string;
@@ -112,64 +126,118 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     loadActiveLocation();
   }, []);
 
+  // Função auxiliar para calcular tendência comparando valor atual com anterior
+  const calculateTrend = (currentValue: number, previousValue: number | undefined): "up" | "down" | "stable" => {
+    if (previousValue === undefined) return "stable";
+
+    const diff = currentValue - previousValue;
+    const threshold = Math.abs(previousValue) * 0.02; // 2% de variação
+
+    if (Math.abs(diff) < threshold) return "stable";
+    return diff > 0 ? "up" : "down";
+  };
+
   // Função para converter módulos WaterySoil em dados de sensores para exibição
-  // Agora mostra os 4 sensores do Eco-Soil Pro de cada módulo
+  // Agora mostra os 4 sensores do Eco-Soil Pro de cada módulo com classificação
   const modulesToSensorData = useCallback(
     (modules: WaterySoilModule[]): SensorData[] => {
       const allSensors: SensorData[] = [];
 
       modules.forEach((module) => {
+        // Obter tipo de solo (prioriza módulo, depois setor, padrão loam)
+        const soilType: SoilType = (module.soil_type as SoilType) || 'loam';
+
         // Determina o status baseado no status do módulo
         let status: "good" | "warning" | "critical" = "good";
         if (module.status === "offline") status = "critical";
         else if (module.status === "error" || module.status === "maintenance")
           status = "warning";
 
+        // Obter valores anteriores para calcular tendência
+        const previousPh = (module.sensor_data?.ph as any)?.previous_value;
+        const previousMoisture = (module.sensor_data?.soil_moisture as any)?.previous_value;
+        const previousTemp = (module.sensor_data?.temperature as any)?.previous_value;
+        const previousP = (module.sensor_data?.npk as any)?.previous_phosphorus;
+        const previousK = (module.sensor_data?.npk as any)?.previous_potassium;
+
         // 1. pH do Solo
         if (module.sensor_data?.ph?.value !== undefined) {
+          const phValue = module.sensor_data.ph.value;
+          const parameterStatus = classifyPH(phValue);
+          const statusTip = getStatusTip('ph', parameterStatus);
+          const trend = calculateTrend(phValue, previousPh);
+
           allSensors.push({
             id: `${module._id}-ph`,
             name: "pH do Solo",
-            value: module.sensor_data.ph.value,
+            value: phValue,
             unit: "pH",
             status,
-            trend: "stable" as const,
+            parameterStatus,
+            statusTip,
+            trend,
             icon: <Leaf className="h-8 w-8" />,
             color: "text-green-600",
             bgColor: "bg-green-50",
           });
         }
 
-        // 2. Nutrientes NPK (mostra média ou total)
-        if (module.sensor_data?.npk?.nitrogen !== undefined) {
-          const npkAvg =
-            ((module.sensor_data.npk.nitrogen || 0) +
-              (module.sensor_data.npk.phosphorus || 0) +
-              (module.sensor_data.npk.potassium || 0)) /
-            3;
+        // 2. Nutrientes NPK (mostra P e K separadamente)
+        if (module.sensor_data?.npk) {
+          const phosphorus = module.sensor_data.npk.phosphorus;
+          const potassium = module.sensor_data.npk.potassium;
 
-          allSensors.push({
-            id: `${module._id}-npk`,
-            name: "Nutrientes NPK",
-            value: npkAvg,
-            unit: "%",
-            status,
-            trend: "stable" as const,
-            icon: <Activity className="h-8 w-8" />,
-            color: "text-purple-600",
-            bgColor: "bg-purple-50",
-          });
+          if (phosphorus !== undefined && potassium !== undefined) {
+            // Classificar P e K
+            const pStatus = classifyPhosphorus(phosphorus);
+            const kStatus = classifyPotassium(potassium);
+
+            // Status global: pior dos dois
+            const parameterStatus = pStatus === 'Ruim' || kStatus === 'Ruim' ? 'Ruim' :
+                                   pStatus === 'Bom' || kStatus === 'Bom' ? 'Bom' : 'Ideal';
+
+            // Mostrar faixas ideais de referência ao invés dos valores atuais
+            const statusTip = `P: ideal (20-40 ppm), K: ideal (100-150 ppm)`;
+
+            // Mostrar média para visualização
+            const npkAvg = (phosphorus + potassium) / 2;
+            const previousNpkAvg = (previousP !== undefined && previousK !== undefined)
+              ? (previousP + previousK) / 2
+              : undefined;
+            const trend = calculateTrend(npkAvg, previousNpkAvg);
+
+            allSensors.push({
+              id: `${module._id}-npk`,
+              name: "Nutrientes P/K",
+              value: npkAvg,
+              unit: "ppm",
+              status,
+              parameterStatus,
+              statusTip,
+              trend,
+              icon: <Activity className="h-8 w-8" />,
+              color: "text-purple-600",
+              bgColor: "bg-purple-50",
+            });
+          }
         }
 
         // 3. Umidade do Solo
         if (module.sensor_data?.soil_moisture?.value !== undefined) {
+          const moistureValue = module.sensor_data.soil_moisture.value;
+          const parameterStatus = classifyVWC(moistureValue, soilType);
+          const statusTip = getStatusTip('moisture', parameterStatus, soilType);
+          const trend = calculateTrend(moistureValue, previousMoisture);
+
           allSensors.push({
             id: `${module._id}-moisture`,
             name: "Umidade do Solo",
-            value: module.sensor_data.soil_moisture.value,
+            value: moistureValue,
             unit: "%",
             status,
-            trend: "stable" as const,
+            parameterStatus,
+            statusTip,
+            trend,
             icon: <Droplets className="h-8 w-8" />,
             color: "text-blue-600",
             bgColor: "bg-blue-50",
@@ -178,13 +246,20 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
 
         // 4. Temperatura
         if (module.sensor_data?.temperature?.value !== undefined) {
+          const tempValue = module.sensor_data.temperature.value;
+          const parameterStatus = classifyTemperature(tempValue);
+          const statusTip = getStatusTip('temperature', parameterStatus);
+          const trend = calculateTrend(tempValue, previousTemp);
+
           allSensors.push({
             id: `${module._id}-temp`,
             name: "Temperatura",
-            value: module.sensor_data.temperature.value,
+            value: tempValue,
             unit: "°C",
             status,
-            trend: "stable" as const,
+            parameterStatus,
+            statusTip,
+            trend,
             icon: <Thermometer className="h-8 w-8" />,
             color: "text-amber-600",
             bgColor: "bg-amber-50",
@@ -235,7 +310,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   useEffect(() => {
     if (activeSector?._id) {
       loadModules();
-      const interval = setInterval(loadModules, 10000); // Atualiza a cada 10 segundos
+      const interval = setInterval(loadModules, 2000); // ⚡ Atualiza a cada 2 segundos
       return () => clearInterval(interval);
     }
   }, [activeSector, loadModules]);
@@ -243,7 +318,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   // Carregar todos os módulos do usuário quando o componente montar
   useEffect(() => {
     loadAllUserModules();
-    const interval = setInterval(loadAllUserModules, 10000); // Atualiza a cada 10 segundos
+    const interval = setInterval(loadAllUserModules, 2000); // ⚡ Atualiza a cada 2 segundos
     return () => clearInterval(interval);
   }, [loadAllUserModules]);
 
@@ -379,9 +454,9 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
   const getTrendIcon = (trend: string) => {
     switch (trend) {
       case "up":
-        return <TrendingUp className="h-4 w-4 text-green-600" />;
+        return <TrendingUp className="h-4 w-4 text-green-600" />; // ⬆️ Verde quando aumenta
       case "down":
-        return <TrendingUp className="h-4 w-4 text-red-600 rotate-180" />;
+        return <TrendingDown className="h-4 w-4 text-red-600" />; // ⬇️ Vermelho quando diminui
       default:
         return <div className="h-4 w-4 rounded-full bg-gray-400"></div>;
     }
@@ -504,7 +579,6 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
                   </div>
                   <div className="flex flex-col items-end space-y-1">
                     {getStatusIcon(sensor.status)}
-                    {getTrendIcon(sensor.trend)}
                   </div>
                 </div>
                 <h3 className="text-sm font-medium text-gray-600 mb-1">
@@ -518,25 +592,36 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
                     {sensor.unit}
                   </span>
                 </div>
-                <div className="mt-4 flex items-center justify-between">
-                  <span
-                    className={`text-xs px-2 py-1 rounded-full ${
-                      sensor.status === "good"
-                        ? "bg-green-100 text-green-700"
-                        : sensor.status === "warning"
-                        ? "bg-amber-100 text-amber-700"
-                        : "bg-red-100 text-red-700"
-                    }`}
-                  >
-                    {sensor.status === "good"
-                      ? "Ideal"
-                      : sensor.status === "warning"
-                      ? "Atenção"
-                      : "Crítico"}
-                  </span>
-                  <span className="text-xs text-gray-500">
-                    Atualizado agora
-                  </span>
+                <div className="mt-4 space-y-2">
+                  {/* Status agronômico (Ideal/Bom/Ruim) */}
+                  {sensor.parameterStatus && (
+                    <div className="flex items-center justify-between">
+                      <span
+                        className={`text-xs px-3 py-1 rounded-full font-medium border ${
+                          sensor.parameterStatus === "Ideal"
+                            ? "bg-green-50 text-green-700 border-green-200"
+                            : sensor.parameterStatus === "Bom"
+                            ? "bg-yellow-50 text-yellow-700 border-yellow-200"
+                            : "bg-red-50 text-red-700 border-red-200"
+                        }`}
+                      >
+                        {sensor.parameterStatus === "Ideal" && "✓ "}
+                        {sensor.parameterStatus === "Bom" && "⚠ "}
+                        {sensor.parameterStatus === "Ruim" && "✗ "}
+                        {sensor.parameterStatus}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        Agora
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Dica contextual */}
+                  {sensor.statusTip && (
+                    <p className="text-xs text-gray-500 italic">
+                      {sensor.statusTip}
+                    </p>
+                  )}
                 </div>
               </div>
             ))}

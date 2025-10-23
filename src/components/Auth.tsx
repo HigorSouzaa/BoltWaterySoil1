@@ -18,11 +18,27 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onBackToLanding }) => {
   const [twoFALoading, setTwoFALoading] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [rememberMe, setRememberMe] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: ''
   });
+
+  // Carregar credenciais salvas ao montar o componente
+  useEffect(() => {
+    const savedEmail = localStorage.getItem('rememberedEmail');
+    const savedPassword = localStorage.getItem('rememberedPassword');
+
+    if (savedEmail && savedPassword) {
+      setFormData(prev => ({
+        ...prev,
+        email: savedEmail,
+        password: savedPassword
+      }));
+      setRememberMe(true);
+    }
+  }, []);
 
   // Limpar erro quando trocar de modo (login/registro)
   useEffect(() => {
@@ -62,6 +78,16 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onBackToLanding }) => {
 
         // Login normal sem 2FA
         if (response.token && response.user) {
+          // Salvar credenciais se "Lembrar de mim" estiver marcado
+          if (rememberMe) {
+            localStorage.setItem('rememberedEmail', formData.email);
+            localStorage.setItem('rememberedPassword', formData.password);
+          } else {
+            // Limpar credenciais salvas se desmarcado
+            localStorage.removeItem('rememberedEmail');
+            localStorage.removeItem('rememberedPassword');
+          }
+
           authService.saveAuthData(response.token, response.user);
           setLoginLoading(false);
           onLogin();
@@ -248,8 +274,13 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onBackToLanding }) => {
 
             {isLogin && (
               <div className="flex items-center justify-between">
-                <label className="flex items-center">
-                  <input type="checkbox" className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+                <label className="flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                  />
                   <span className="ml-2 text-sm text-gray-600">Lembrar de mim</span>
                 </label>
                 <a href="#" className="text-sm text-blue-600 hover:text-blue-700">

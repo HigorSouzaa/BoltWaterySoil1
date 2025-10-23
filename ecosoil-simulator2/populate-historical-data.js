@@ -21,12 +21,12 @@ let hardwareState = {
   ecoSoilDevice: null,
   waterySoilModule: null,
   lastSensorData: {
-    soil_moisture: 50,
-    temperature: 25,
-    nitrogen: 40,
-    phosphorus: 30,
-    potassium: 35,
-    ph: 6.5
+    soil_moisture: 30.0,    // Média: 30% (Ideal: 20-30%)
+    temperature: 30.0,      // Média: 30°C (Ideal: 20-30°C)
+    nitrogen: 40,           // Mantido para compatibilidade
+    phosphorus: 30.0,       // Média: 30 ppm (Ideal: 20-40 ppm)
+    potassium: 125.0,       // Média: 125 ppm (Ideal: 100-150 ppm)
+    ph: 7.0                 // Média: 7.0 (Ideal: 6.0-7.0)
   }
 };
 
@@ -36,17 +36,54 @@ let hardwareState = {
 
 /**
  * Gera valores realistas de sensores com variação gradual
+ * Baseado nas médias da imagem: pH=7.0, P/K=95.0, Umidade=30.0%, Temp=30.0°C
  */
 function generateRealisticSensorData() {
   const { lastSensorData } = hardwareState;
 
+  // Variações maiores para simular condições reais ao longo do tempo
   return {
-    soil_moisture: clamp(lastSensorData.soil_moisture + (Math.random() - 0.5) * 4, 20, 90),
-    temperature: clamp(lastSensorData.temperature + (Math.random() - 0.5) * 1, 18, 32),
-    nitrogen: clamp(lastSensorData.nitrogen + (Math.random() - 0.5) * 2, 25, 80),
-    phosphorus: clamp(lastSensorData.phosphorus + (Math.random() - 0.5) * 2, 20, 75),
-    potassium: clamp(lastSensorData.potassium + (Math.random() - 0.5) * 2, 25, 70),
-    ph: clamp(lastSensorData.ph + (Math.random() - 0.5) * 0.2, 5.5, 7.5)
+    // Umidade: média 30%, variação ±5% (25-35%)
+    soil_moisture: clamp(
+      lastSensorData.soil_moisture + (Math.random() - 0.5) * 10,
+      22,
+      38
+    ),
+
+    // Temperatura: média 30°C, variação ±3°C (27-33°C)
+    temperature: clamp(
+      lastSensorData.temperature + (Math.random() - 0.5) * 6,
+      25,
+      35
+    ),
+
+    // Nitrogênio: mantido para compatibilidade
+    nitrogen: clamp(
+      lastSensorData.nitrogen + (Math.random() - 0.5) * 4,
+      35,
+      50
+    ),
+
+    // Fósforo (P): média 30 ppm, variação ±8 ppm (22-38 ppm)
+    phosphorus: clamp(
+      lastSensorData.phosphorus + (Math.random() - 0.5) * 16,
+      20,
+      45
+    ),
+
+    // Potássio (K): média 125 ppm, variação ±20 ppm (105-145 ppm)
+    potassium: clamp(
+      lastSensorData.potassium + (Math.random() - 0.5) * 40,
+      95,
+      155
+    ),
+
+    // pH: média 7.0, variação ±0.3 (6.7-7.3)
+    ph: clamp(
+      lastSensorData.ph + (Math.random() - 0.5) * 0.6,
+      6.5,
+      7.5
+    )
   };
 }
 

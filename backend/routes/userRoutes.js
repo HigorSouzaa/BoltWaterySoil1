@@ -7,7 +7,8 @@ const {
   updateProfile,
   uploadAvatar,
   getProfile,
-  changePassword
+  changePassword,
+  verifyToken
 } = require("../controllers/userController");
 const { authenticateToken } = require("../middleware/auth");
 const upload = require("../middleware/upload");
@@ -20,6 +21,7 @@ router.post("/login", login);
 router.post("/verify-2fa", verify2FACode);
 
 // Rotas protegidas (requerem autenticação)
+router.get("/verify-token", authenticateToken, verifyToken);
 router.put("/password", authenticateToken, changePassword);
 router.post("/toggle-2fa", authenticateToken, toggle2FA);
 

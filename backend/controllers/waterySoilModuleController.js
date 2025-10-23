@@ -2,6 +2,10 @@ const WaterySoilModule = require("../models/WaterySoilModule");
 const Sector = require("../models/Sector");
 const EcoSoilPro = require("../models/EcoSoilPro");
 const DataSensors = require("../models/DataSensors");
+const {
+  classifyAllParameters,
+  calculateGlobalStatus
+} = require("../services/parameterClassification");
 
 /**
  * Controller para gerenciamento de módulos WaterySoil
@@ -555,6 +559,55 @@ const updateSensorData = async (req, res) => {
 };
 
 
+// GET /api/v1/waterysoil-modules/:id/monitoring-status - Obter status de monitoramento com classificação
+const getMonitoringStatus = async (req, res) => {
+  try {
+    const module = await WaterySoilModule.findOne({
+      _id: req.params.id,
+      user_id: req.user._id,
+      is_active: true
+    }).populate('sector_id', 'name soil_type');
+
+    if (!module) {
+      return res.status(404).json({
+        success: false,
+        message: "Módulo WaterySoil não encontrado"
+      });
+    }
+
+    // Obter tipo de solo (prioriza módulo, depois setor, padrão loam)
+    const soilType = module.soil_type || module.sector_id?.soil_type || 'loam';
+
+    // Classificar todos os parâmetros
+    const classification = classifyAllParameters(module.sensor_data, soilType);
+
+    // Calcular status global
+    const globalStatus = calculateGlobalStatus(classification);
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        module_id: module._id,
+        module_name: module.name,
+        soil_type: soilType,
+        classification,
+        global_status: globalStatus,
+        last_update: module.sensor_data.soil_moisture?.last_update ||
+                     module.sensor_data.temperature?.last_update ||
+                     module.sensor_data.ph?.last_update ||
+                     module.sensor_data.npk?.last_update
+      }
+    });
+  } catch (error) {
+    console.error('Erro ao obter status de monitoramento:', error);
+    return res.status(500).json({
+      success: false,
+      message: "Erro interno do servidor",
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getWaterySoilModules,
   getWaterySoilModuleById,
@@ -563,5 +616,6 @@ module.exports = {
   pingWaterySoilModule,
   deleteWaterySoilModule,
   getWaterySoilModuleByMAC,    // NOVO - Para hardware encontrar o módulo
-  updateSensorData              // NOVO - Para hardware enviar dados
+  updateSensorData,            // NOVO - Para hardware enviar dados
+  getMonitoringStatus          // NOVO - Para obter status de monitoramento
 };

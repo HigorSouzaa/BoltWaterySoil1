@@ -426,17 +426,41 @@ const getAggregatedForCharts = async (req, res) => {
         labels.push(`${hour.toString().padStart(2, '0')}:00`);
       }
     } else if (timeRange === 'weekly') {
-      start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      dataPoints = 7; // 1 por dia
+      // Semana ISO: Segunda a Domingo
+      // Encontrar a segunda-feira da semana atual
+      const today = new Date();
+      const dayOfWeek = today.getDay(); // 0 = Dom, 1 = Seg, ..., 6 = Sáb
+      const daysToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // Se domingo, volta 6 dias
+
+      const monday = new Date(today);
+      monday.setDate(today.getDate() + daysToMonday);
+      monday.setHours(0, 0, 0, 0);
+      start = monday;
+
+      dataPoints = 7; // Segunda a Domingo
       groupBy = 24 * 60 * 60 * 1000; // 1 dia em ms
 
-      // Gerar labels: Dom, Seg, Ter, Qua, Qui, Sex, Sáb
-      const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-      for (let i = 0; i < dataPoints; i++) {
-        const date = new Date(start.getTime() + i * groupBy);
-        labels.push(days[date.getDay()]);
+      // Gerar labels: Seg, Ter, Qua, Qui, Sex, Sáb, Dom
+      const days = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+      labels = [...days];
+    } else if (timeRange === 'monthly') {
+      // Mês civil: do dia 01 até o último dia do mês
+      const today = new Date();
+      const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+      firstDay.setHours(0, 0, 0, 0);
+      start = firstDay;
+
+      // Último dia do mês (dia 0 do próximo mês)
+      const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+      dataPoints = lastDay.getDate(); // 28, 29, 30 ou 31
+      groupBy = 24 * 60 * 60 * 1000; // 1 dia em ms
+
+      // Gerar labels: 01, 02, 03, ..., 28/29/30/31
+      for (let i = 1; i <= dataPoints; i++) {
+        labels.push(i.toString().padStart(2, '0'));
       }
     } else {
+      // Fallback: últimos 30 dias
       start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
       dataPoints = 30; // 1 por dia
       groupBy = 24 * 60 * 60 * 1000; // 1 dia em ms

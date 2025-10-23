@@ -12,7 +12,7 @@ export const EnvironmentManager: React.FC = () => {
   const [editingEnv, setEditingEnv] = useState<Environment | null>(null);
   const [editingSector, setEditingSector] = useState<Sector | null>(null);
   const [envForm, setEnvForm] = useState({ name: '', description: '' });
-  const [sectorForm, setSectorForm] = useState({ name: '', description: '' });
+  const [sectorForm, setSectorForm] = useState({ name: '', description: '', soil_type: 'loam' });
 
   useEffect(() => {
     loadEnvironments();
@@ -79,19 +79,21 @@ export const EnvironmentManager: React.FC = () => {
       if (editingSector) {
         await sectorService.updateSector(editingSector._id, {
           name: sectorForm.name,
-          description: sectorForm.description
+          description: sectorForm.description,
+          soil_type: sectorForm.soil_type
         });
       } else {
         await sectorService.createSector({
           name: sectorForm.name,
           description: sectorForm.description,
-          environment_id: selectedEnvironment
+          environment_id: selectedEnvironment,
+          soil_type: sectorForm.soil_type
         });
       }
 
       setShowSectorModal(false);
       setEditingSector(null);
-      setSectorForm({ name: '', description: '' });
+      setSectorForm({ name: '', description: '', soil_type: 'loam' });
       loadSectors(selectedEnvironment);
     } catch (error) {
       console.error('Error saving sector:', error);
@@ -138,7 +140,11 @@ export const EnvironmentManager: React.FC = () => {
 
   const openEditSector = (sector: Sector) => {
     setEditingSector(sector);
-    setSectorForm({ name: sector.name, description: sector.description || '' });
+    setSectorForm({
+      name: sector.name,
+      description: sector.description || '',
+      soil_type: (sector as any).soil_type || 'loam'
+    });
     setShowSectorModal(true);
   };
 
@@ -371,13 +377,30 @@ export const EnvironmentManager: React.FC = () => {
                   placeholder="Descrição opcional"
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Tipo de Solo
+                </label>
+                <select
+                  value={sectorForm.soil_type}
+                  onChange={(e) => setSectorForm({ ...sectorForm, soil_type: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                >
+                  <option value="sand">Arenoso (Sand)</option>
+                  <option value="loam">Franco (Loam) - Padrão</option>
+                  <option value="clay">Argiloso (Clay)</option>
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  O tipo de solo afeta as faixas ideais de umidade
+                </p>
+              </div>
             </div>
             <div className="flex gap-3 mt-6">
               <button
                 onClick={() => {
                   setShowSectorModal(false);
                   setEditingSector(null);
-                  setSectorForm({ name: '', description: '' });
+                  setSectorForm({ name: '', description: '', soil_type: 'loam' });
                 }}
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
               >

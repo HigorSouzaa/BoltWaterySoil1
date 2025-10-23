@@ -85,6 +85,13 @@ const WaterySoilModuleSchema = new mongoose.Schema({
       last_update: { type: Date }
     }
   },
+  soil_type: {
+    type: String,
+    enum: ['sand', 'loam', 'clay'],
+    default: 'loam',
+    lowercase: true,
+    trim: true
+  },
   is_active: {
     type: Boolean,
     default: true

@@ -8,7 +8,8 @@ const {
   pingWaterySoilModule,
   deleteWaterySoilModule,
   getWaterySoilModuleByMAC,
-  updateSensorData
+  updateSensorData,
+  getMonitoringStatus
 } = require("../controllers/waterySoilModuleController");
 
 const router = express.Router();
@@ -36,6 +37,9 @@ router.get("/", getWaterySoilModules);
 
 // GET /api/v1/waterysoil-modules/:id - Buscar módulo específico
 router.get("/:id", getWaterySoilModuleById);
+
+// GET /api/v1/waterysoil-modules/:id/monitoring-status - Obter status de monitoramento
+router.get("/:id/monitoring-status", getMonitoringStatus);
 
 // POST /api/v1/waterysoil-modules - Criar módulo WaterySoil
 router.post("/", createWaterySoilModule);

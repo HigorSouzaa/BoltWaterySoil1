@@ -431,6 +431,29 @@ const toggle2FA = async (req, res) => {
   }
 };
 
+/**
+ * Verificar se o token JWT é válido
+ * GET /api/v1/users/verify-token
+ * Retorna 200 se válido, 401 se inválido/expirado
+ */
+const verifyToken = async (req, res) => {
+  try {
+    // Se chegou aqui, o middleware authenticateToken já validou o token
+    // req.user contém os dados do usuário
+    return res.status(200).json({
+      success: true,
+      message: "Token válido",
+      valid: true
+    });
+  } catch (error) {
+    console.error("Erro ao verificar token:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Erro ao verificar token"
+    });
+  }
+};
+
 module.exports = {
   register,
   login,
@@ -440,4 +463,5 @@ module.exports = {
   updateProfile,
   uploadAvatar,
   changePassword,
+  verifyToken
 };

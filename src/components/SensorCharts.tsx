@@ -271,7 +271,7 @@ const SensorCharts: React.FC<SensorChartsProps> = ({ sectorId }) => {
       },
       {
         label: 'Ideal',
-        data: [6.5, 70, 25, 50],
+        data: [7.0, 27, 25, 63],
         backgroundColor: 'rgba(156, 163, 175, 0.3)',
         borderColor: 'rgb(156, 163, 175)',
         borderWidth: 2,
