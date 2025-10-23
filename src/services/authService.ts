@@ -40,9 +40,19 @@ class AuthService {
     if (!response.ok) {
       // Exibe o código antes de lançar o erro
       if (data.code) {
+        console.error('❌ Código de erro:', data.code);
         alert(`Código: ${data.code}`);
       }
       throw new Error(data.message || 'Erro ao fazer login');
+    }
+
+    // Se requer 2FA e tem código, exibe para desenvolvimento (sem email)
+    if (data.requires2FA && data.code) {
+      console.log('🔐 ===================================');
+      console.log('🔐 CÓDIGO DE VERIFICAÇÃO 2FA');
+      console.log('🔐 Código:', data.code);
+      console.log('🔐 ===================================');
+      alert(`✅ ${data.message}\n\n🔐 Código de Verificação: ${data.code}\n\n(Em produção este código seria enviado por email)`);
     }
 
     return data;
