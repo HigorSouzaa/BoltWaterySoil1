@@ -81,14 +81,14 @@ const login = async (req, res) => {
 
       // Armazenar código temporariamente
       twoFactorStore.set(email, { code, expiresAt, userId: user._id.toString() });
-      alert(code)
       // Enviar código por email
       // await enviarCodigoEmail(email, code);
 
       // Retornar resposta indicando que 2FA é necessário
       return res.status(200).json({
         requires2FA: true,
-        message: "Código de verificação enviado para seu email"
+        message: "Código de verificação enviado para seu email",
+        code: code
       });
     }
 
@@ -105,7 +105,7 @@ const login = async (req, res) => {
       dateStyle: 'short',
       timeStyle: 'medium'
     });
-    await enviarEmailLogin(email, timestamp);
+    // await enviarEmailLogin(email, timestamp);
 
     return res.status(200).json({ token, user: userData });
   } catch (error) {
@@ -392,7 +392,7 @@ const verify2FACode = async (req, res) => {
       dateStyle: 'short',
       timeStyle: 'medium'
     });
-    await enviarEmailLogin(email, timestamp);
+    // await enviarEmailLogin(email, timestamp);
 
     return res.status(200).json({ token, user });
   } catch (error) {
