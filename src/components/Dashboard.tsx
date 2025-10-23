@@ -578,7 +578,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
                     <div className={sensor.color}>{sensor.icon}</div>
                   </div>
                   <div className="flex flex-col items-end space-y-1">
-                    {getStatusIcon(sensor.status)}
+                    {getStatusIcon(sensor.status)}  
                   </div>
                 </div>
                 <h3 className="text-sm font-medium text-gray-600 mb-1">
