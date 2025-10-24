@@ -50,10 +50,6 @@ const Landing: React.FC<LandingProps> = ({ onNavigateToAuth }) => {
                 Começar Agora
                 <ArrowRight className="h-5 w-5" />
               </button>
-              <button className="text-gray-700 px-8 py-4 rounded-full text-lg font-semibold hover:bg-white/50 transition-all duration-300 flex items-center gap-2">
-                Ver Demonstração
-                <BarChart3 className="h-5 w-5" />
-              </button>
             </div>
           </div>
 
