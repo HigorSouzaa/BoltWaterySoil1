@@ -39,7 +39,8 @@ function App() {
       }
 
       try {
-        const response = await fetch('http://localhost:3000/api/v1/users/verify-token', {
+        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
+        const response = await fetch(`${API_URL}/users/verify-token`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${token}`,

@@ -63,10 +63,12 @@ const SensorCharts: React.FC<SensorChartsProps> = ({ sectorId }) => {
       console.log('📊 SectorId:', sectorId);
       console.log('📊 TimeRange:', timeRange);
 
+      const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
+      
       // Buscar dados reais da API (mesmo sem sectorId)
       const url = sectorId
-        ? `http://localhost:3000/api/v1/data-sensors/aggregated?sectorId=${sectorId}&timeRange=${timeRange}`
-        : `http://localhost:3000/api/v1/data-sensors/aggregated?timeRange=${timeRange}`;
+        ? `${API_URL}/data-sensors/aggregated?sectorId=${sectorId}&timeRange=${timeRange}`
+        : `${API_URL}/data-sensors/aggregated?timeRange=${timeRange}`;
 
       const response = await fetch(url, {
         headers: {

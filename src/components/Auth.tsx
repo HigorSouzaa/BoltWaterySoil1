@@ -70,6 +70,22 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onBackToLanding }) => {
 
         // Verificar se precisa de 2FA
         if (response.requires2FA) {
+          // Exibir código de verificação (para desenvolvimento sem email)
+          if (response.code) {
+            console.log('🔐 ===================================');
+            console.log('🔐 CÓDIGO DE VERIFICAÇÃO 2FA');
+            console.log('🔐 Código:', response.code);
+            console.log('🔐 Email:', formData.email);
+            console.log('🔐 ===================================');
+            
+            alert(
+              `✅ ${response.message || 'Código de verificação enviado!'}\n\n` +
+              `🔐 Código de Verificação: ${response.code}\n\n` +
+              `📧 Email: ${formData.email}\n\n` +
+              `⚠️ Em produção este código seria enviado por email`
+            );
+          }
+          
           setTwoFAEmail(formData.email);
           setShow2FA(true);
           setLoginLoading(false);

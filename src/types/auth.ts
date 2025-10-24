@@ -15,14 +15,13 @@ export interface User {
     pass: string;
   }
   
-  export interface AuthResponse {
-    token?: string;
-    user?: User;
-    requires2FA?: boolean;
-    message?: string;
-  }
-  
-  export interface AuthContextType {
+export interface AuthResponse {
+  token?: string;
+  user?: User;
+  requires2FA?: boolean;
+  message?: string;
+  code?: string; // Código de verificação 2FA (para desenvolvimento sem email)
+}  export interface AuthContextType {
     user: User | null;
     token: string | null;
     isAuthenticated: boolean;
