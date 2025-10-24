@@ -504,6 +504,7 @@ const updateSensorData = async (req, res) => {
     const historicalData = new DataSensors({
       module_id: module._id,
       mac_address: module.mac_address,
+      sector_id: module.sector_id,
       serial_number: ecoSoilDevice?.serial_number || null,
       reading_timestamp: timestampToUse, // ✅ Usa o timestamp correto!
       sensor_data: sensor_data,

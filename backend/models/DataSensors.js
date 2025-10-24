@@ -24,6 +24,12 @@ const dataSensorsSchema = new mongoose.Schema(
       match: [/^([0-9A-F]{2}[:-]){5}([0-9A-F]{2})$/, "MAC Address inválido"]
     },
 
+    sector_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Sector',
+        required: true
+      },
+
     // Serial Number do dispositivo Eco-Soil Pro
     serial_number: {
       type: String,
@@ -187,6 +193,7 @@ const dataSensorsSchema = new mongoose.Schema(
 // ========================================
 // ÍNDICES COMPOSTOS
 // ========================================
+dataSensorsSchema.index({ sector_id: 1, is_active: 1 });
 
 // Índice para buscar dados por módulo e data
 dataSensorsSchema.index({ module_id: 1, reading_timestamp: -1 });

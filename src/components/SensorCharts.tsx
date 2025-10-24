@@ -100,7 +100,19 @@ const SensorCharts: React.FC<SensorChartsProps> = ({ sectorId }) => {
 
       if (!hasData) {
         console.log('⚠️ Nenhum dado encontrado no período');
-        setError('Nenhum dado encontrado para o período selecionado. Verifique se há leituras dos sensores no banco de dados.');
+
+        // Mensagem mais específica baseada na resposta do backend
+        let errorMessage = 'Nenhum dado encontrado para o período selecionado.';
+
+        if (result.message === "Nenhum módulo encontrado neste setor") {
+          errorMessage = 'Nenhum hardware cadastrado neste setor. Cadastre um módulo WaterySoil para começar a visualizar dados.';
+        } else if (result.message === "Nenhum módulo encontrado para este usuário") {
+          errorMessage = 'Você ainda não possui módulos cadastrados. Vá em "Módulos" para cadastrar seu primeiro hardware.';
+        } else {
+          errorMessage = 'Nenhum dado encontrado para o período selecionado. Verifique se há leituras dos sensores no banco de dados.';
+        }
+
+        setError(errorMessage);
         setChartData(null);
         setLoading(false);
         return;

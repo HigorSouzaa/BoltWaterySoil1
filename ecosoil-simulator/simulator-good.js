@@ -7,7 +7,7 @@ const axios = require('axios');
 
 const CONFIG = {
   apiUrl: process.env.API_URL || 'http://localhost:3000/api/v1',
-  macAddress: process.env.MAC_ADDRESS || 'AA:BB:CC:DD:EE:F1',
+  macAddress: process.env.MAC_ADDRESS || 'AA:BB:CC:DD:EE:FF',
   sendInterval: parseInt(process.env.SEND_INTERVAL) || 2000, // ⚡ 2 segundos
   simulationMode: 'good' // Sempre valores BONS
 };

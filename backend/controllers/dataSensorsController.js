@@ -348,18 +348,24 @@ const getAggregatedForCharts = async (req, res) => {
         })));
       }
 
+      // ✅ CORREÇÃO: Se não houver módulos no setor, retornar vazio
+      // Não buscar módulos de outros setores!
       if (modules.length === 0) {
-        console.log('⚠️ Nenhum módulo encontrado no setor, buscando todos os módulos do usuário');
-        // Se não encontrar módulos no setor, buscar todos os módulos do usuário
-        const allModules = await WaterySoilModule.find({
-          user_id: userId,
-          is_active: true
+        console.log('⚠️ Nenhum módulo encontrado no setor selecionado');
+        return res.status(200).json({
+          success: true,
+          data: {
+            labels: [],
+            ph: [],
+            moisture: [],
+            temperature: [],
+            npk: []
+          },
+          message: "Nenhum módulo encontrado neste setor"
         });
-        console.log('📊 Total de módulos do usuário:', allModules.length);
-        moduleIds = allModules.map(m => m._id);
-      } else {
-        moduleIds = modules.map(m => m._id);
       }
+
+      moduleIds = modules.map(m => m._id);
     } else {
       // Se não passar sectorId, buscar todos os módulos do usuário
       console.log('📊 Buscando todos os módulos do usuário');
@@ -402,6 +408,13 @@ const getAggregatedForCharts = async (req, res) => {
     let query = {
       module_id: { $in: moduleIds }
     };
+
+    // ✅ CORREÇÃO: Se sectorId foi especificado, filtrar também por sector_id
+    // Isso garante que apenas dados do setor correto sejam retornados
+    if (sectorId) {
+      query.sector_id = sectorId;
+      console.log('📊 Filtrando também por sector_id:', sectorId);
+    }
 
     // Definir período
     const now = new Date();
@@ -485,18 +498,28 @@ const getAggregatedForCharts = async (req, res) => {
 
     console.log('📊 Total de leituras encontradas:', sensorData.length);
 
-    // Se não encontrar dados no período, buscar os últimos dados disponíveis DO USUÁRIO
+    // Se não encontrar dados no período, buscar os últimos dados disponíveis
     if (sensorData.length === 0) {
-      console.log('⚠️ Nenhum dado encontrado no período, buscando últimos dados disponíveis do usuário');
-      const lastData = await DataSensors.find({
-        module_id: { $in: moduleIds }, // ← FILTRAR POR MÓDULOS DO USUÁRIO!
+      console.log('⚠️ Nenhum dado encontrado no período, buscando últimos dados disponíveis');
+
+      // ✅ CORREÇÃO: Construir query de fallback com os mesmos filtros
+      const fallbackQuery = {
+        module_id: { $in: moduleIds },
         is_active: true,
         'validation.is_valid': true
-      })
-      .sort({ reading_timestamp: -1 })
-      .limit(100);
+      };
 
-      console.log('📊 Últimos dados do usuário encontrados:', lastData.length);
+      // Se sectorId foi especificado, manter o filtro no fallback
+      if (sectorId) {
+        fallbackQuery.sector_id = sectorId;
+        console.log('📊 Fallback também filtrando por sector_id:', sectorId);
+      }
+
+      const lastData = await DataSensors.find(fallbackQuery)
+        .sort({ reading_timestamp: -1 })
+        .limit(100);
+
+      console.log('📊 Últimos dados encontrados:', lastData.length);
 
       if (lastData.length > 0) {
         // Usar os últimos dados encontrados

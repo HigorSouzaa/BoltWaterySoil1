@@ -7,7 +7,7 @@ const axios = require('axios');
 
 const CONFIG = {
   apiUrl: process.env.API_URL || 'http://localhost:3000/api/v1',
-  macAddress: process.env.MAC_ADDRESS || 'AA:BB:CC:DD:EE:F2',
+  macAddress: process.env.MAC_ADDRESS || 'AA:BB:CC:DD:EE:FF',
   startDate: new Date('2025-09-21T00:00:00-03:00'), // Data inicial
   endDate: new Date(), // Data atual
   intervalMinutes: 10 // Intervalo entre leituras
