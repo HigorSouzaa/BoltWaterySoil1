@@ -680,6 +680,8 @@ export const UserSettings: React.FC = () => {
                 </div>
               </div>
 
+            
+
               {/* Two-Factor Authentication */}
               <div className="bg-gray-50 rounded-lg p-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">

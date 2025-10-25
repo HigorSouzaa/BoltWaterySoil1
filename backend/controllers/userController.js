@@ -5,7 +5,8 @@ const {
   enviarCodigoEmail,
   enviarEmailBoasVindas,
   enviarEmailLogin,
-  enviarEmailAlteracaoPerfil
+  enviarEmailAlteracaoPerfil,
+  enviarEmailAlteracaoSenha
 } = require("../services/serviceAuthEmail");
 
 // Armazenamento temporário de códigos 2FA (em produção, usar Redis)
@@ -258,82 +259,8 @@ const changePassword = async (req, res) => {
     user.password = newPasswordHash;
     await user.save();
 
-    const For = email;
-    const subject = "Alteração de Senha - Watery Soil";
-    const text = `Olá! Houve uma edição dos dados cadastrais`;
-    const html = `  
-    <!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Novo Login no Watery Soil</title>
-</head>
-<body style="margin: 0; padding: 0; background-color: #f4f4f4;">
-
-    <table border="0" cellpadding="0" cellspacing="0" width="100%" style="table-layout: fixed; background-color: #f4f4f4;">
-        <tr>
-            <td align="center" style="padding: 20px 0;">
-                
-                <table border="0" cellpadding="0" cellspacing="0" width="600" style="background-color: #ffffff; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                    
-                    <tr>
-                        <td align="center" style="background-color: rgb(104, 212, 119); padding: 20px 0; border-radius: 8px 8px 0 0;">
-                            <h1 style="color: white; font-weight: 700; margin: 0; font-family: Arial, sans-serif; font-size: 28px;">Watery Soil</h1>
-                        </td>
-                    </tr>
-                    
-                    <tr>
-                        <td style="padding: 40px 30px; text-align: center;">
-                            
-                            <h2 style="color: #333333; font-weight: 600; margin-top: 0; margin-bottom: 20px; font-family: Arial, sans-serif; font-size: 24px;">Alteração de Senha - Watery Soil!</h2>
-                            
-                            <p style="color: black; font-family: 'Courier New', Courier, monospace; font-weight: 400; font-size: 16px; line-height: 1.5; margin-bottom: 0;">
-                                O usuário (${user}) com o e-mail:
-                            </p>
-                            
-                            <p style="color: rgb(104, 212, 119); font-family: 'Courier New', Courier, monospace; font-weight: 700; font-size: 18px; margin-top: 5px;">
-                                ${email} </p>
-                            
-                            <p style="color: black; font-family: 'Courier New', Courier, monospace; font-weight: 400; font-size: 16px; line-height: 1.5; margin-top: 20px;">
-                                Acaba de alterar a senha de cadastro!
-                            </p>
-
-                        </td>
-                    </tr>
-                    
-                    <tr>
-                        <td align="center" style="padding: 15px 30px; border-top: 1px solid #eeeeee;">
-                            <p style="color: #999999; font-family: Arial, sans-serif; font-size: 12px; margin: 0;">
-                                Esta é uma notificação automática. Por favor, não responda a este e-mail.
-                            </p>
-                        </td>
-                    </tr>
-
-                </table>
-            </td>
-        </tr>
-    </table>
-
-</body>
-</html>
-`;
-
-    const transportador = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    });
-
-    const info = await transportador.sendMail({
-      from: process.env.EMAIL_USER,
-      to: For,
-      subject: subject,
-      text: text,
-      html: html,
-    });
+    // Enviar email de notificação de alteração de senha
+    await enviarEmailAlteracaoSenha(user.email, user.name);
 
     return res.status(200).json({
       message: "Senha alterada com sucesso!",

@@ -173,7 +173,7 @@ function twoFactorCodeEmail(code) {
                     Código de Verificação
                 </h2>
                 <p style="color: #4b5563; font-size: 16px; line-height: 1.6; margin: 0 0 30px 0;">
-                    Use o código abaixo para completar seu login no WaterySoil.
+                    Use o código abaixo para completar sua autenticação no WaterySoil.
                 </p>
             </td>
         </tr>
@@ -393,10 +393,98 @@ function profileUpdateEmail(name, email) {
   };
 }
 
+/**
+ * Email de Alteração de Senha
+ */
+function passwordChangeEmail(name, email) {
+  const content = `
+    <table width="100%" border="0" cellpadding="0" cellspacing="0">
+        <tr>
+            <td align="center">
+                <div style="background-color: #dbeafe; border-radius: 50%; width: 80px; height: 80px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 20px;">
+                    <span style="font-size: 40px;">🔑</span>
+                </div>
+            </td>
+        </tr>
+        <tr>
+            <td align="center">
+                <h2 style="color: #1f2937; font-size: 28px; font-weight: 700; margin: 0 0 15px 0;">
+                    Senha Alterada com Sucesso
+                </h2>
+                <p style="color: #4b5563; font-size: 16px; line-height: 1.6; margin: 0 0 25px 0;">
+                    Olá <strong style="color: #2563eb;">${name}</strong>,
+                </p>
+                <p style="color: #4b5563; font-size: 16px; line-height: 1.6; margin: 0 0 25px 0;">
+                    A senha da sua conta WaterySoil foi alterada com sucesso.
+                </p>
+            </td>
+        </tr>
+        <tr>
+            <td style="background-color: #f0f9ff; border-left: 4px solid #2563eb; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <p style="color: #1e40af; font-size: 14px; font-weight: 600; margin: 0 0 8px 0;">
+                    📧 Conta:
+                </p>
+                <p style="color: #1f2937; font-size: 16px; font-weight: 700; margin: 0; font-family: 'Courier New', monospace;">
+                    ${email}
+                </p>
+            </td>
+        </tr>
+        <tr>
+            <td align="center" style="padding-top: 30px;">
+                <p style="color: #4b5563; font-size: 15px; line-height: 1.6; margin: 0;">
+                    Sua senha foi atualizada e já está em vigor. Use a nova senha no próximo login.
+                </p>
+            </td>
+        </tr>
+        <tr>
+            <td style="padding-top: 30px;">
+                <table width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 20px;">
+                    <tr>
+                        <td>
+                            <p style="color: #991b1b; font-size: 15px; font-weight: 600; margin: 0 0 10px 0;">
+                                ⚠️ Não foi você?
+                            </p>
+                            <p style="color: #7f1d1d; font-size: 14px; line-height: 1.6; margin: 0;">
+                                Se você não realizou esta alteração, entre em contato conosco <strong>imediatamente</strong>. Sua conta pode estar comprometida.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+        <tr>
+            <td style="padding-top: 25px;">
+                <table width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #f9fafb; border-radius: 8px; padding: 20px;">
+                    <tr>
+                        <td>
+                            <p style="color: #1f2937; font-size: 15px; font-weight: 600; margin: 0 0 12px 0;">
+                                🛡️ Dicas de Segurança:
+                            </p>
+                            <ul style="color: #4b5563; font-size: 14px; line-height: 1.8; margin: 0; padding-left: 20px;">
+                                <li>Use senhas fortes e únicas para cada serviço</li>
+                                <li>Ative a autenticação em duas etapas para maior segurança</li>
+                                <li>Nunca compartilhe sua senha com ninguém</li>
+                            </ul>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+  `;
+
+  return {
+    subject: "🔑 Senha Alterada com Sucesso - WaterySoil",
+    text: `Olá ${name}!\n\nA senha da sua conta WaterySoil foi alterada com sucesso.\n\nConta: ${email}\n\nSe você não realizou esta alteração, entre em contato conosco imediatamente.\n\nEquipe WaterySoil`,
+    html: baseTemplate("Senha Alterada", content)
+  };
+}
+
 module.exports = {
   welcomeEmail,
   twoFactorCodeEmail,
   loginNotificationEmail,
-  profileUpdateEmail
+  profileUpdateEmail,
+  passwordChangeEmail
 };
 

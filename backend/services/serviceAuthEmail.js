@@ -3,7 +3,8 @@ const {
   welcomeEmail,
   twoFactorCodeEmail,
   loginNotificationEmail,
-  profileUpdateEmail
+  profileUpdateEmail,
+  passwordChangeEmail
 } = require("./emailTemplates");
 require("dotenv").config();
 
@@ -88,9 +89,20 @@ async function enviarEmailAlteracaoPerfil(toEmail, name) {
   return sendEmail(toEmail, subject, text, html);
 }
 
+/**
+ * Envia email de alteração de senha
+ * @param {string} toEmail - Email do destinatário
+ * @param {string} name - Nome do usuário
+ */
+async function enviarEmailAlteracaoSenha(toEmail, name) {
+  const { subject, text, html } = passwordChangeEmail(name, toEmail);
+  return sendEmail(toEmail, subject, text, html);
+}
+
 module.exports = {
   enviarCodigoEmail,
   enviarEmailBoasVindas,
   enviarEmailLogin,
-  enviarEmailAlteracaoPerfil
+  enviarEmailAlteracaoPerfil,
+  enviarEmailAlteracaoSenha
 };
