@@ -54,6 +54,12 @@ interface PasswordForm {
   confirmPassword: string;
 }
 
+interface EmailChangeForm {
+  newEmail: string;
+  confirmEmail: string;
+  password: string;
+}
+
 export const UserSettings: React.FC = () => {
   const notification = useNotification();
   const [activeTab, setActiveTab] = useState<
@@ -91,10 +97,17 @@ export const UserSettings: React.FC = () => {
     confirmPassword: "",
   });
 
+  const [emailChangeForm, setEmailChangeForm] = useState<EmailChangeForm>({
+    newEmail: "",
+    confirmEmail: "",
+    password: "",
+  });
+
   const [showPasswords, setShowPasswords] = useState({
     current: false,
     new: false,
     confirm: false,
+    emailChange: false,
   });
 
   const [loading, setLoading] = useState(true);
@@ -289,6 +302,54 @@ export const UserSettings: React.FC = () => {
     }
   };
 
+  const handleChangeEmail = async () => {
+    // Validações
+    if (!emailChangeForm.newEmail || !emailChangeForm.confirmEmail || !emailChangeForm.password) {
+      notification.warning('Campos obrigatórios', 'Preencha todos os campos.');
+      return;
+    }
+
+    if (emailChangeForm.newEmail !== emailChangeForm.confirmEmail) {
+      notification.warning('Emails não coincidem', 'O novo email e a confirmação devem ser iguais.');
+      return;
+    }
+
+    // Validar formato do email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(emailChangeForm.newEmail)) {
+      notification.warning('Email inválido', 'Por favor, insira um email válido.');
+      return;
+    }
+
+    if (emailChangeForm.newEmail === userProfile.email) {
+      notification.warning('Email igual', 'O novo email deve ser diferente do email atual.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await userService.requestEmailChange(
+        emailChangeForm.newEmail,
+        emailChangeForm.password
+      );
+
+      setEmailChangeForm({
+        newEmail: "",
+        confirmEmail: "",
+        password: "",
+      });
+
+      notification.success(
+        'Email de confirmação enviado!',
+        'Verifique sua caixa de entrada do novo email para confirmar a alteração.'
+      );
+    } catch (error: any) {
+      notification.error('Erro ao solicitar alteração', error.message || 'Não foi possível processar a solicitação.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -463,14 +524,46 @@ export const UserSettings: React.FC = () => {
                       <input
                         type="date"
                         value={userProfile.birthDate}
-                        onChange={(e) =>
+                        onChange={(e) => {
+                          const selectedDate = new Date(e.target.value);
+                          const today = new Date();
+                          const age = today.getFullYear() - selectedDate.getFullYear();
+                          const monthDiff = today.getMonth() - selectedDate.getMonth();
+                          const dayDiff = today.getDate() - selectedDate.getDate();
+
+                          // Ajustar idade se ainda não fez aniversário este ano
+                          const actualAge = monthDiff < 0 || (monthDiff === 0 && dayDiff < 0) ? age - 1 : age;
+
+                          if (actualAge < 16) {
+                            notification.error('Data inválida', 'Você deve ter pelo menos 16 anos.');
+                            return;
+                          }
+
+                          if (actualAge > 110) {
+                            notification.error('Data inválida', 'Data de nascimento inválida.');
+                            return;
+                          }
+
                           setUserProfile({
                             ...userProfile,
                             birthDate: e.target.value,
-                          })
-                        }
+                          });
+                        }}
+                        max={(() => {
+                          const date = new Date();
+                          date.setFullYear(date.getFullYear() - 16);
+                          return date.toISOString().split('T')[0];
+                        })()}
+                        min={(() => {
+                          const date = new Date();
+                          date.setFullYear(date.getFullYear() - 110);
+                          return date.toISOString().split('T')[0];
+                        })()}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Você deve ter entre 16 e 110 anos
+                      </p>
                     </div>
 
                     <div className="md:col-span-2">
@@ -680,7 +773,110 @@ export const UserSettings: React.FC = () => {
                 </div>
               </div>
 
-            
+              {/* Change Email */}
+              <div className="bg-gray-50 rounded-lg p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <Mail size={20} />
+                  Alterar Email
+                </h3>
+                <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-800">
+                    <strong>Email atual:</strong> {userProfile.email}
+                  </p>
+                  <p className="text-xs text-blue-600 mt-2">
+                    Um email de confirmação será enviado para o novo endereço.
+                  </p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Novo Email
+                    </label>
+                    <input
+                      type="email"
+                      value={emailChangeForm.newEmail}
+                      onChange={(e) =>
+                        setEmailChangeForm({
+                          ...emailChangeForm,
+                          newEmail: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="novo@email.com"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Confirmar Novo Email
+                    </label>
+                    <input
+                      type="email"
+                      value={emailChangeForm.confirmEmail}
+                      onChange={(e) =>
+                        setEmailChangeForm({
+                          ...emailChangeForm,
+                          confirmEmail: e.target.value,
+                        })
+                      }
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Confirme o novo email"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Senha Atual (para confirmar)
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showPasswords.emailChange ? "text" : "password"}
+                        value={emailChangeForm.password}
+                        onChange={(e) =>
+                          setEmailChangeForm({
+                            ...emailChangeForm,
+                            password: e.target.value,
+                          })
+                        }
+                        className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Digite sua senha"
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setShowPasswords({
+                            ...showPasswords,
+                            emailChange: !showPasswords.emailChange,
+                          })
+                        }
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                      >
+                        {showPasswords.emailChange ? (
+                          <EyeOff size={16} />
+                        ) : (
+                          <Eye size={16} />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex justify-end">
+                  <button
+                    onClick={handleChangeEmail}
+                    disabled={
+                      saving ||
+                      !emailChangeForm.newEmail ||
+                      !emailChangeForm.confirmEmail ||
+                      !emailChangeForm.password
+                    }
+                    className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  >
+                    <Mail size={16} />
+                    {saving ? "Enviando..." : "Solicitar Alteração"}
+                  </button>
+                </div>
+              </div>
 
               {/* Two-Factor Authentication */}
               <div className="bg-gray-50 rounded-lg p-6">

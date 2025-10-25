@@ -480,11 +480,314 @@ function passwordChangeEmail(name, email) {
   };
 }
 
+/**
+ * Email de Confirmação de Alteração de Email
+ * @param {string} name - Nome do usuário
+ * @param {string} newEmail - Novo email
+ * @param {string} token - Token de verificação
+ * @returns {object} { subject, text, html }
+ */
+function emailChangeConfirmationEmail(name, newEmail, token) {
+  const verificationUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/verify-email?token=${token}`;
+
+  const content = `
+    <table width="100%" border="0" cellpadding="0" cellspacing="0">
+        <tr>
+            <td align="center">
+                <div style="background-color: #fef3c7; border-radius: 50%; width: 80px; height: 80px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 20px;">
+                    <span style="font-size: 40px;">📧</span>
+                </div>
+            </td>
+        </tr>
+        <tr>
+            <td align="center">
+                <h2 style="color: #1f2937; font-size: 28px; font-weight: 700; margin: 0 0 15px 0;">
+                    Confirme seu Novo Email
+                </h2>
+                <p style="color: #4b5563; font-size: 16px; line-height: 1.6; margin: 0 0 25px 0;">
+                    Olá <strong style="color: #2563eb;">${name}</strong>,
+                </p>
+                <p style="color: #4b5563; font-size: 16px; line-height: 1.6; margin: 0 0 25px 0;">
+                    Você solicitou a alteração do email da sua conta WaterySoil para:
+                </p>
+            </td>
+        </tr>
+        <tr>
+            <td style="background-color: #f0f9ff; border-left: 4px solid #2563eb; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <p style="color: #1e40af; font-size: 14px; font-weight: 600; margin: 0 0 8px 0;">
+                    📧 Novo Email:
+                </p>
+                <p style="color: #1f2937; font-size: 16px; font-weight: 700; margin: 0; font-family: 'Courier New', monospace;">
+                    ${newEmail}
+                </p>
+            </td>
+        </tr>
+        <tr>
+            <td align="center" style="padding-top: 30px;">
+                <p style="color: #4b5563; font-size: 15px; line-height: 1.6; margin: 0 0 25px 0;">
+                    Para confirmar esta alteração, clique no botão abaixo:
+                </p>
+            </td>
+        </tr>
+        <tr>
+            <td align="center">
+                <table border="0" cellpadding="0" cellspacing="0">
+                    <tr>
+                        <td align="center" style="background: linear-gradient(135deg, #2563eb 0%, #10b981 100%); border-radius: 8px; padding: 14px 32px;">
+                            <a href="${verificationUrl}" style="color: #ffffff; text-decoration: none; font-weight: 600; font-size: 16px; display: inline-block;">
+                                Confirmar Novo Email →
+                            </a>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+        <tr>
+            <td style="padding-top: 30px;">
+                <table width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 18px; border-radius: 8px;">
+                    <tr>
+                        <td width="30" valign="top">
+                            <span style="font-size: 20px;">⏱️</span>
+                        </td>
+                        <td>
+                            <p style="color: #92400e; font-size: 14px; margin: 0; line-height: 1.5;">
+                                <strong>Atenção:</strong> Este link expira em <strong>1 hora</strong>.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+        <tr>
+            <td style="padding-top: 25px;">
+                <table width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 20px;">
+                    <tr>
+                        <td>
+                            <p style="color: #991b1b; font-size: 15px; font-weight: 600; margin: 0 0 10px 0;">
+                                ⚠️ Não foi você?
+                            </p>
+                            <p style="color: #7f1d1d; font-size: 14px; line-height: 1.6; margin: 0;">
+                                Se você não solicitou esta alteração, ignore este email. Seu email atual permanecerá inalterado.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+  `;
+
+  return {
+    subject: "📧 Confirme seu Novo Email - WaterySoil",
+    text: `Olá ${name}!\n\nVocê solicitou a alteração do email da sua conta WaterySoil para: ${newEmail}\n\nPara confirmar, acesse: ${verificationUrl}\n\nEste link expira em 1 hora.\n\nSe você não solicitou esta alteração, ignore este email.\n\nEquipe WaterySoil`,
+    html: baseTemplate("Confirme seu Novo Email", content)
+  };
+}
+
+/**
+ * Email de Notificação de Alteração de Email (enviado para o email antigo)
+ * @param {string} name - Nome do usuário
+ * @param {string} oldEmail - Email antigo
+ * @param {string} newEmail - Novo email
+ * @returns {object} { subject, text, html }
+ */
+function emailChangeNotificationEmail(name, oldEmail, newEmail) {
+  const content = `
+    <table width="100%" border="0" cellpadding="0" cellspacing="0">
+        <tr>
+            <td align="center">
+                <div style="background-color: #fef3c7; border-radius: 50%; width: 80px; height: 80px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 20px;">
+                    <span style="font-size: 40px;">📧</span>
+                </div>
+            </td>
+        </tr>
+        <tr>
+            <td align="center">
+                <h2 style="color: #1f2937; font-size: 28px; font-weight: 700; margin: 0 0 15px 0;">
+                    Email Alterado com Sucesso
+                </h2>
+                <p style="color: #4b5563; font-size: 16px; line-height: 1.6; margin: 0 0 25px 0;">
+                    Olá <strong style="color: #2563eb;">${name}</strong>,
+                </p>
+                <p style="color: #4b5563; font-size: 16px; line-height: 1.6; margin: 0 0 25px 0;">
+                    O email da sua conta WaterySoil foi alterado com sucesso.
+                </p>
+            </td>
+        </tr>
+        <tr>
+            <td style="background-color: #f0f9ff; border-left: 4px solid #2563eb; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <table width="100%" border="0" cellpadding="0" cellspacing="0">
+                    <tr>
+                        <td style="padding-bottom: 12px;">
+                            <p style="color: #1e40af; font-size: 14px; font-weight: 600; margin: 0 0 8px 0;">
+                                📧 Email Anterior:
+                            </p>
+                            <p style="color: #1f2937; font-size: 16px; font-weight: 700; margin: 0; font-family: 'Courier New', monospace;">
+                                ${oldEmail}
+                            </p>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <p style="color: #1e40af; font-size: 14px; font-weight: 600; margin: 0 0 8px 0;">
+                                📧 Novo Email:
+                            </p>
+                            <p style="color: #10b981; font-size: 16px; font-weight: 700; margin: 0; font-family: 'Courier New', monospace;">
+                                ${newEmail}
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+        <tr>
+            <td align="center" style="padding-top: 30px;">
+                <p style="color: #4b5563; font-size: 15px; line-height: 1.6; margin: 0;">
+                    A partir de agora, use o novo email para fazer login na plataforma.
+                </p>
+            </td>
+        </tr>
+        <tr>
+            <td style="padding-top: 30px;">
+                <table width="100%" border="0" cellpadding="0" cellspacing="0" style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 20px;">
+                    <tr>
+                        <td>
+                            <p style="color: #991b1b; font-size: 15px; font-weight: 600; margin: 0 0 10px 0;">
+                                ⚠️ Não foi você?
+                            </p>
+                            <p style="color: #7f1d1d; font-size: 14px; line-height: 1.6; margin: 0;">
+                                Se você não realizou esta alteração, entre em contato conosco <strong>imediatamente</strong>. Sua conta pode estar comprometida.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+  `;
+
+  return {
+    subject: "📧 Email Alterado - WaterySoil",
+    text: `Olá ${name}!\n\nO email da sua conta WaterySoil foi alterado.\n\nEmail Anterior: ${oldEmail}\nNovo Email: ${newEmail}\n\nSe você não realizou esta alteração, entre em contato conosco imediatamente.\n\nEquipe WaterySoil`,
+    html: baseTemplate("Email Alterado", content)
+  };
+}
+
+/**
+ * Template de email para alertas automáticos
+ * @param {string} name - Nome do usuário
+ * @param {string} alertType - Tipo de alerta (humidity, temperature, ph)
+ * @param {number} currentValue - Valor atual do sensor
+ * @param {number} limitValue - Valor do limite configurado
+ * @param {string} limitType - Tipo de limite (min ou max)
+ * @param {string} sectorName - Nome do setor afetado
+ * @param {string} timestamp - Data/hora da ocorrência
+ * @returns {object} Objeto com subject, text e html
+ */
+function automaticAlertEmail(name, alertType, currentValue, limitValue, limitType, sectorName, timestamp) {
+  // Mapear tipo de alerta para nome legível e emoji
+  const alertTypeMap = {
+    humidity: { name: 'Umidade do Solo', emoji: '💧', unit: '%', color: '#3b82f6' },
+    temperature: { name: 'Temperatura', emoji: '🌡️', unit: '°C', color: '#ef4444' },
+    ph: { name: 'pH do Solo', emoji: '🌱', unit: '', color: '#10b981' }
+  };
+
+  const alertInfo = alertTypeMap[alertType] || { name: 'Parâmetro', emoji: '⚠️', unit: '', color: '#f59e0b' };
+  const limitTypeText = limitType === 'min' ? 'mínimo' : 'máximo';
+  const comparison = limitType === 'min' ? 'abaixo' : 'acima';
+
+  const content = `
+    <div style="text-align: center; margin-bottom: 30px;">
+      <div style="display: inline-block; background-color: #fee2e2; border-radius: 50%; width: 80px; height: 80px; line-height: 80px; font-size: 40px; margin-bottom: 20px;">
+        ${alertInfo.emoji}
+      </div>
+      <h2 style="color: #dc2626; margin: 0 0 10px 0; font-size: 24px; font-weight: 700;">
+        Alerta Automático
+      </h2>
+      <p style="color: #6b7280; margin: 0; font-size: 16px;">
+        ${alertInfo.name} ${comparison} do limite ${limitTypeText}
+      </p>
+    </div>
+
+    <div style="background-color: #fef2f2; border-left: 4px solid #dc2626; padding: 20px; border-radius: 8px; margin-bottom: 30px;">
+      <p style="margin: 0 0 15px 0; color: #374151; font-size: 16px; line-height: 1.6;">
+        Olá <strong>${name}</strong>,
+      </p>
+      <p style="margin: 0 0 15px 0; color: #374151; font-size: 16px; line-height: 1.6;">
+        Detectamos que o parâmetro <strong>${alertInfo.name}</strong> no setor <strong>${sectorName}</strong> está ${comparison} do limite ${limitTypeText} configurado.
+      </p>
+
+      <div style="background-color: #ffffff; border-radius: 8px; padding: 20px; margin: 20px 0;">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td style="padding: 10px 0; border-bottom: 1px solid #e5e7eb;">
+              <span style="color: #6b7280; font-size: 14px;">Valor Atual:</span>
+            </td>
+            <td align="right" style="padding: 10px 0; border-bottom: 1px solid #e5e7eb;">
+              <span style="color: #dc2626; font-size: 18px; font-weight: 700;">${currentValue}${alertInfo.unit}</span>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 10px 0; border-bottom: 1px solid #e5e7eb;">
+              <span style="color: #6b7280; font-size: 14px;">Limite ${limitTypeText.charAt(0).toUpperCase() + limitTypeText.slice(1)}:</span>
+            </td>
+            <td align="right" style="padding: 10px 0; border-bottom: 1px solid #e5e7eb;">
+              <span style="color: #374151; font-size: 18px; font-weight: 700;">${limitValue}${alertInfo.unit}</span>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 10px 0;">
+              <span style="color: #6b7280; font-size: 14px;">Setor:</span>
+            </td>
+            <td align="right" style="padding: 10px 0;">
+              <span style="color: #374151; font-size: 16px; font-weight: 600;">${sectorName}</span>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 10px 0;">
+              <span style="color: #6b7280; font-size: 14px;">Data/Hora:</span>
+            </td>
+            <td align="right" style="padding: 10px 0;">
+              <span style="color: #374151; font-size: 14px;">${new Date(timestamp).toLocaleString('pt-BR')}</span>
+            </td>
+          </tr>
+        </table>
+      </div>
+
+      <p style="margin: 15px 0 0 0; color: #374151; font-size: 14px; line-height: 1.6;">
+        <strong>Recomendação:</strong> Verifique as condições do setor e tome as medidas necessárias para corrigir o problema.
+      </p>
+    </div>
+
+    <div style="text-align: center; margin-top: 30px;">
+      <a href="${process.env.FRONTEND_URL || 'http://localhost:5174'}/dashboard"
+         style="display: inline-block; background: linear-gradient(135deg, #2563eb 0%, #10b981 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);">
+        Acessar Dashboard
+      </a>
+    </div>
+
+    <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+      <p style="color: #6b7280; font-size: 13px; line-height: 1.6; margin: 0;">
+        <strong>💡 Dica:</strong> Você pode ajustar os limites de alertas nas configurações do seu perfil.
+      </p>
+    </div>
+  `;
+
+  return {
+    subject: `🚨 Alerta: ${alertInfo.name} ${comparison} do limite - WaterySoil`,
+    text: `Olá ${name}!\n\nAlerta Automático Detectado\n\n${alertInfo.name} no setor ${sectorName} está ${comparison} do limite ${limitTypeText}.\n\nValor Atual: ${currentValue}${alertInfo.unit}\nLimite ${limitTypeText.charAt(0).toUpperCase() + limitTypeText.slice(1)}: ${limitValue}${alertInfo.unit}\nSetor: ${sectorName}\nData/Hora: ${new Date(timestamp).toLocaleString('pt-BR')}\n\nAcesse o dashboard para mais detalhes: ${process.env.FRONTEND_URL || 'http://localhost:5174'}/dashboard\n\nEquipe WaterySoil`,
+    html: baseTemplate("Alerta Automático", content)
+  };
+}
+
 module.exports = {
   welcomeEmail,
   twoFactorCodeEmail,
   loginNotificationEmail,
   profileUpdateEmail,
-  passwordChangeEmail
+  passwordChangeEmail,
+  emailChangeConfirmationEmail,
+  emailChangeNotificationEmail,
+  automaticAlertEmail
 };
 

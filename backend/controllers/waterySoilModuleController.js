@@ -6,6 +6,7 @@ const {
   classifyAllParameters,
   calculateGlobalStatus
 } = require("../services/parameterClassification");
+const { monitorSensorData } = require("../services/alertMonitoringService");
 
 /**
  * Controller para gerenciamento de módulos WaterySoil
@@ -533,7 +534,37 @@ const updateSensorData = async (req, res) => {
     await module.save();
 
     // ========================================
-    // 3. RETORNAR RESPOSTA
+    // 3. MONITORAMENTO AUTOMÁTICO DE ALERTAS
+    // ========================================
+
+    // Buscar informações do setor para o monitoramento
+    try {
+      const sector = await Sector.findById(module.sector_id);
+      if (sector) {
+        // Preparar dados do sensor para monitoramento
+        const sensorDataForMonitoring = {
+          soil_moisture: sensor_data?.soil_moisture?.value,
+          temperature: sensor_data?.temperature?.value,
+          ph: sensor_data?.ph?.value
+        };
+
+        // Executar monitoramento (não bloqueia a resposta)
+        monitorSensorData(
+          module.user_id.toString(),
+          module.sector_id.toString(),
+          sector.name,
+          sensorDataForMonitoring,
+          timestampToUse
+        ).catch(error => {
+          console.error('❌ Erro no monitoramento automático:', error);
+        });
+      }
+    } catch (error) {
+      console.error('❌ Erro ao buscar setor para monitoramento:', error);
+    }
+
+    // ========================================
+    // 4. RETORNAR RESPOSTA
     // ========================================
 
     return res.status(200).json({

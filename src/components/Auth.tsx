@@ -1,15 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Droplets, Mail, Lock, User, ArrowLeft, AlertCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext'; // Import atualizado
 import TwoFactorAuth from './TwoFactorAuth';
 import authService from '../services/authService';
 
-interface AuthProps {
-  onLogin: () => void;
-  onBackToLanding: () => void;
-}
-
-const Auth: React.FC<AuthProps> = ({ onLogin, onBackToLanding }) => {
+const Auth: React.FC = () => {
+  const navigate = useNavigate();
   const { register, isLoading, error, clearError } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [show2FA, setShow2FA] = useState(false);
@@ -90,7 +87,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onBackToLanding }) => {
 
           authService.saveAuthData(response.token, response.user);
           setLoginLoading(false);
-          onLogin();
+          navigate('/dashboard');
         } else {
           throw new Error('Resposta inválida do servidor');
         }
@@ -102,8 +99,8 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onBackToLanding }) => {
           pass: formData.password
         });
 
-        // Sucesso - chama callback do pai
-        onLogin();
+        // Sucesso - redirecionar para dashboard
+        navigate('/dashboard');
       }
     } catch (err) {
       setLoginLoading(false);
@@ -123,7 +120,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onBackToLanding }) => {
 
       if (response.token && response.user) {
         authService.saveAuthData(response.token, response.user);
-        onLogin();
+        navigate('/dashboard');
       } else {
         throw new Error('Resposta inválida do servidor');
       }
@@ -172,7 +169,7 @@ const Auth: React.FC<AuthProps> = ({ onLogin, onBackToLanding }) => {
       <div className="max-w-md w-full">
         {/* Back Button */}
         <button
-          onClick={onBackToLanding}
+          onClick={() => navigate('/')}
           className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-8 transition-colors duration-200"
         >
           <ArrowLeft className="h-5 w-5" />

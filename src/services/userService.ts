@@ -127,6 +127,51 @@ class UserService {
       throw error;
     }
   }
+
+  async requestEmailChange(newEmail: string, password: string) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/users/change-email`, {
+        method: 'POST',
+        headers: {
+          ...this.getAuthHeaders(),
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ newEmail, password })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Erro ao solicitar alteração de email');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error requesting email change:', error);
+      throw error;
+    }
+  }
+
+  async verifyEmailToken(token: string) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/users/verify-email-token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ token })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Erro ao verificar token');
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error('Error verifying email token:', error);
+      throw error;
+    }
+  }
 }
 
 // Exporta uma instância única (Singleton)

@@ -1,11 +1,9 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Droplets, Leaf, BarChart3, Users, ArrowRight, CheckCircle, Sun, Battery, Zap, Shield, Wifi, CloudRain } from 'lucide-react';
 
-interface LandingProps {
-  onNavigateToAuth: () => void;
-}
-
-const Landing: React.FC<LandingProps> = ({ onNavigateToAuth }) => {
+const Landing: React.FC = () => {
+  const navigate = useNavigate();
   return (
     <div className="min-h-screen">
       {/* Navigation */}
@@ -19,7 +17,7 @@ const Landing: React.FC<LandingProps> = ({ onNavigateToAuth }) => {
               </span>
             </div>
             <button
-              onClick={onNavigateToAuth}
+              onClick={() => navigate('/auth')}
               className="bg-blue-600 text-white px-6 py-2 rounded-full hover:bg-blue-700 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
             >
               Entrar
@@ -44,7 +42,7 @@ const Landing: React.FC<LandingProps> = ({ onNavigateToAuth }) => {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
               <button
-                onClick={onNavigateToAuth}
+                onClick={() => navigate('/auth')}
                 className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-8 py-4 rounded-full text-lg font-semibold hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-xl hover:shadow-2xl transform hover:scale-105 flex items-center gap-2"
               >
                 Começar Agora
@@ -404,7 +402,7 @@ const Landing: React.FC<LandingProps> = ({ onNavigateToAuth }) => {
             e aumentando sua produtividade com o WaterySoil.
           </p>
           <button
-            onClick={onNavigateToAuth}
+            onClick={() => navigate('/auth')}
             className="bg-white text-blue-600 px-8 py-4 rounded-full text-lg font-semibold hover:bg-gray-50 transition-all duration-300 shadow-xl hover:shadow-2xl transform hover:scale-105 inline-flex items-center gap-2"
           >
             Começar Gratuitamente

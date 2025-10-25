@@ -6,11 +6,16 @@ const {
   enviarEmailBoasVindas,
   enviarEmailLogin,
   enviarEmailAlteracaoPerfil,
-  enviarEmailAlteracaoSenha
+  enviarEmailAlteracaoSenha,
+  enviarEmailConfirmacaoAlteracaoEmail,
+  enviarEmailNotificacaoAlteracaoEmail
 } = require("../services/serviceAuthEmail");
 
 // Armazenamento temporário de códigos 2FA (em produção, usar Redis)
 const twoFactorStore = new Map();
+
+// Armazenamento temporário de tokens de alteração de email (em produção, usar Redis)
+const emailChangeStore = new Map();
 
 function gerarCodigo() {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -24,15 +29,40 @@ setInterval(() => {
       twoFactorStore.delete(key);
     }
   }
+  for (const [key, value] of emailChangeStore.entries()) {
+    if (value.expiresAt < now) {
+      emailChangeStore.delete(key);
+    }
+  }
 }, 5 * 60 * 1000);
 
 const register = async (req, res) => {
-  const { name, email, pass } = req.body;
+  const { name, email, pass, birthDate } = req.body;
 
   try {
     const userExist = await User.findOne({ email });
     if (userExist) {
       return res.status(400).json({ message: "Email já está em uso!!" });
+    }
+
+    // Validar data de nascimento se fornecida
+    if (birthDate) {
+      const birthDateObj = new Date(birthDate);
+      const today = new Date();
+      const age = today.getFullYear() - birthDateObj.getFullYear();
+      const monthDiff = today.getMonth() - birthDateObj.getMonth();
+      const dayDiff = today.getDate() - birthDateObj.getDate();
+
+      // Ajustar idade se ainda não fez aniversário este ano
+      const actualAge = monthDiff < 0 || (monthDiff === 0 && dayDiff < 0) ? age - 1 : age;
+
+      if (actualAge < 16) {
+        return res.status(400).json({ message: "Você deve ter pelo menos 16 anos." });
+      }
+
+      if (actualAge > 110) {
+        return res.status(400).json({ message: "Data de nascimento inválida." });
+      }
     }
 
     const passHash = await bcrypt.hash(pass, 8);
@@ -41,6 +71,7 @@ const register = async (req, res) => {
       name,
       email,
       password: passHash,
+      birthDate: birthDate || '',
     });
 
     await user.save();
@@ -140,6 +171,26 @@ const updateProfile = async (req, res) => {
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ message: "Usuário não encontrado" });
+    }
+
+    // Validar data de nascimento se fornecida
+    if (birthDate) {
+      const birthDateObj = new Date(birthDate);
+      const today = new Date();
+      const age = today.getFullYear() - birthDateObj.getFullYear();
+      const monthDiff = today.getMonth() - birthDateObj.getMonth();
+      const dayDiff = today.getDate() - birthDateObj.getDate();
+
+      // Ajustar idade se ainda não fez aniversário este ano
+      const actualAge = monthDiff < 0 || (monthDiff === 0 && dayDiff < 0) ? age - 1 : age;
+
+      if (actualAge < 16) {
+        return res.status(400).json({ message: "Você deve ter pelo menos 16 anos." });
+      }
+
+      if (actualAge > 110) {
+        return res.status(400).json({ message: "Data de nascimento inválida." });
+      }
     }
 
     // Prepara os dados para atualização (apenas campos enviados)
@@ -381,6 +432,252 @@ const verifyToken = async (req, res) => {
   }
 };
 
+/**
+ * Solicitar alteração de email
+ * POST /api/v1/users/change-email
+ */
+const requestEmailChange = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { newEmail, password } = req.body;
+
+    // Validações básicas
+    if (!newEmail || !password) {
+      return res.status(400).json({
+        message: "Novo email e senha são obrigatórios",
+      });
+    }
+
+    // Validar formato do email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newEmail)) {
+      return res.status(400).json({
+        message: "Formato de email inválido",
+      });
+    }
+
+    // Buscar usuário
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "Usuário não encontrado" });
+    }
+
+    // Verificar senha atual
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    if (!isPasswordValid) {
+      return res.status(401).json({ message: "Senha incorreta" });
+    }
+
+    // Verificar se o novo email já está em uso
+    const emailExists = await User.findOne({ email: newEmail });
+    if (emailExists) {
+      return res.status(400).json({
+        message: "Este email já está em uso por outra conta",
+      });
+    }
+
+    // Verificar se o novo email é diferente do atual
+    if (user.email === newEmail) {
+      return res.status(400).json({
+        message: "O novo email deve ser diferente do email atual",
+      });
+    }
+
+    // Gerar token de verificação
+    const token = jwt.sign(
+      { userId: user._id, newEmail, oldEmail: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: "1h" }
+    );
+
+    // Armazenar token temporariamente
+    const expiresAt = Date.now() + 60 * 60 * 1000; // 1 hora
+    emailChangeStore.set(token, {
+      userId: user._id.toString(),
+      newEmail,
+      oldEmail: user.email,
+      expiresAt,
+    });
+
+    // Enviar email de confirmação para o novo email
+    await enviarEmailConfirmacaoAlteracaoEmail(newEmail, user.name, token);
+
+    return res.status(200).json({
+      message: "Email de confirmação enviado para o novo endereço",
+    });
+  } catch (error) {
+    console.error("Erro ao solicitar alteração de email:", error);
+    return res.status(500).json({
+      message: "Erro ao processar solicitação",
+    });
+  }
+};
+
+/**
+ * Verificar token e confirmar alteração de email
+ * POST /api/v1/users/verify-email-token
+ */
+const verifyEmailToken = async (req, res) => {
+  try {
+    const { token } = req.body;
+
+    if (!token) {
+      return res.status(400).json({ message: "Token é obrigatório" });
+    }
+
+    // Verificar se token existe no armazenamento
+    const storedData = emailChangeStore.get(token);
+    if (!storedData) {
+      return res.status(400).json({
+        message: "Token inválido ou expirado",
+      });
+    }
+
+    // Verificar se token expirou
+    if (Date.now() > storedData.expiresAt) {
+      emailChangeStore.delete(token);
+      return res.status(400).json({
+        message: "Token expirado. Solicite uma nova alteração.",
+      });
+    }
+
+    // Verificar token JWT
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (error) {
+      emailChangeStore.delete(token);
+      return res.status(400).json({ message: "Token inválido" });
+    }
+
+    // Buscar usuário
+    const user = await User.findById(decoded.userId);
+    if (!user) {
+      emailChangeStore.delete(token);
+      return res.status(404).json({ message: "Usuário não encontrado" });
+    }
+
+    // Verificar novamente se o novo email já está em uso
+    const emailExists = await User.findOne({ email: decoded.newEmail });
+    if (emailExists) {
+      emailChangeStore.delete(token);
+      return res.status(400).json({
+        message: "Este email já está em uso por outra conta",
+      });
+    }
+
+    // Atualizar email
+    const oldEmail = user.email;
+    user.email = decoded.newEmail;
+    await user.save();
+
+    // Remover token usado
+    emailChangeStore.delete(token);
+
+    // Enviar email de notificação para o email antigo
+    await enviarEmailNotificacaoAlteracaoEmail(oldEmail, user.name, decoded.newEmail);
+
+    return res.status(200).json({
+      message: "Email alterado com sucesso!",
+      email: user.email,
+    });
+  } catch (error) {
+    console.error("Erro ao verificar token de email:", error);
+    return res.status(500).json({
+      message: "Erro ao processar verificação",
+    });
+  }
+};
+
+/**
+ * Atualizar configurações de alertas automáticos
+ * PUT /api/v1/users/alert-settings
+ */
+const updateAlertSettings = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { alertSettings } = req.body;
+
+    if (!alertSettings) {
+      return res.status(400).json({
+        message: 'Configurações de alertas são obrigatórias'
+      });
+    }
+
+    // Validar estrutura das configurações
+    const validParameters = ['humidity', 'temperature', 'ph'];
+    for (const param of validParameters) {
+      if (alertSettings[param]) {
+        const { min, max, enabled } = alertSettings[param];
+
+        if (typeof min !== 'number' || typeof max !== 'number') {
+          return res.status(400).json({
+            message: `Valores min e max devem ser números para ${param}`
+          });
+        }
+
+        if (min >= max) {
+          return res.status(400).json({
+            message: `Valor mínimo deve ser menor que o máximo para ${param}`
+          });
+        }
+
+        if (typeof enabled !== 'boolean') {
+          return res.status(400).json({
+            message: `Campo enabled deve ser booleano para ${param}`
+          });
+        }
+      }
+    }
+
+    // Atualizar configurações
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { alertSettings },
+      { new: true, runValidators: true }
+    ).select('-password');
+
+    if (!user) {
+      return res.status(404).json({ message: 'Usuário não encontrado' });
+    }
+
+    return res.status(200).json({
+      message: 'Configurações de alertas atualizadas com sucesso',
+      alertSettings: user.alertSettings
+    });
+  } catch (error) {
+    console.error('Erro ao atualizar configurações de alertas:', error);
+    return res.status(500).json({
+      message: 'Erro ao atualizar configurações de alertas'
+    });
+  }
+};
+
+/**
+ * Obter configurações de alertas automáticos
+ * GET /api/v1/users/alert-settings
+ */
+const getAlertSettings = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    const user = await User.findById(userId).select('alertSettings');
+
+    if (!user) {
+      return res.status(404).json({ message: 'Usuário não encontrado' });
+    }
+
+    return res.status(200).json({
+      alertSettings: user.alertSettings
+    });
+  } catch (error) {
+    console.error('Erro ao buscar configurações de alertas:', error);
+    return res.status(500).json({
+      message: 'Erro ao buscar configurações de alertas'
+    });
+  }
+};
+
 module.exports = {
   register,
   login,
@@ -390,5 +687,9 @@ module.exports = {
   updateProfile,
   uploadAvatar,
   changePassword,
-  verifyToken
+  verifyToken,
+  requestEmailChange,
+  verifyEmailToken,
+  updateAlertSettings,
+  getAlertSettings
 };

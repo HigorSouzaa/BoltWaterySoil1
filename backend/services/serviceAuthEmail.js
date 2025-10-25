@@ -4,7 +4,10 @@ const {
   twoFactorCodeEmail,
   loginNotificationEmail,
   profileUpdateEmail,
-  passwordChangeEmail
+  passwordChangeEmail,
+  emailChangeConfirmationEmail,
+  emailChangeNotificationEmail,
+  automaticAlertEmail
 } = require("./emailTemplates");
 require("dotenv").config();
 
@@ -99,10 +102,59 @@ async function enviarEmailAlteracaoSenha(toEmail, name) {
   return sendEmail(toEmail, subject, text, html);
 }
 
+/**
+ * Envia email de confirmação de alteração de email
+ * @param {string} toEmail - Novo email do destinatário
+ * @param {string} name - Nome do usuário
+ * @param {string} token - Token de verificação
+ */
+async function enviarEmailConfirmacaoAlteracaoEmail(toEmail, name, token) {
+  const { subject, text, html } = emailChangeConfirmationEmail(name, toEmail, token);
+  return sendEmail(toEmail, subject, text, html);
+}
+
+/**
+ * Envia email de notificação de alteração de email (para o email antigo)
+ * @param {string} toEmail - Email antigo do destinatário
+ * @param {string} name - Nome do usuário
+ * @param {string} newEmail - Novo email
+ */
+async function enviarEmailNotificacaoAlteracaoEmail(toEmail, name, newEmail) {
+  const { subject, text, html } = emailChangeNotificationEmail(name, toEmail, newEmail);
+  return sendEmail(toEmail, subject, text, html);
+}
+
+/**
+ * Envia email de alerta automático
+ * @param {string} toEmail - Email do destinatário
+ * @param {string} name - Nome do usuário
+ * @param {string} alertType - Tipo de alerta (humidity, temperature, ph)
+ * @param {number} currentValue - Valor atual do sensor
+ * @param {number} limitValue - Valor do limite configurado
+ * @param {string} limitType - Tipo de limite (min ou max)
+ * @param {string} sectorName - Nome do setor afetado
+ * @param {string} timestamp - Data/hora da ocorrência
+ */
+async function enviarEmailAlerta(toEmail, name, alertType, currentValue, limitValue, limitType, sectorName, timestamp) {
+  const { subject, text, html } = automaticAlertEmail(
+    name,
+    alertType,
+    currentValue,
+    limitValue,
+    limitType,
+    sectorName,
+    timestamp
+  );
+  return sendEmail(toEmail, subject, text, html);
+}
+
 module.exports = {
   enviarCodigoEmail,
   enviarEmailBoasVindas,
   enviarEmailLogin,
   enviarEmailAlteracaoPerfil,
-  enviarEmailAlteracaoSenha
+  enviarEmailAlteracaoSenha,
+  enviarEmailConfirmacaoAlteracaoEmail,
+  enviarEmailNotificacaoAlteracaoEmail,
+  enviarEmailAlerta
 };

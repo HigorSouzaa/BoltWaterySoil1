@@ -8,6 +8,9 @@ const waterySoilModuleRoutes = require("./routes/waterySoilModuleRoutes");
 const maintenanceScheduleRoutes = require("./routes/maintenanceScheduleRoutes");
 const ecoSoilProRoutes = require("./routes/ecoSoilProRoutes");
 const dataSensorsRoutes = require("./routes/dataSensorsRoutes");
+const alertRoutes = require("./routes/alertRoutes");
+const irrigationRoutes = require("./routes/irrigationRoutes");
+const reportRoutes = require("./routes/reportRoutes");
 dotenv.config();
 require("./config/database.js");
 
@@ -32,6 +35,9 @@ app.use("/api/v1/waterysoil-modules", waterySoilModuleRoutes);
 app.use("/api/v1/maintenance-schedules", maintenanceScheduleRoutes);
 app.use("/api/v1/ecosoil-devices", ecoSoilProRoutes); // Rota pública para registro de dispositivos
 app.use("/api/v1/data-sensors", dataSensorsRoutes); // Rotas para histórico de dados dos sensores
+app.use("/api/v1/alerts", alertRoutes); // Rotas para sistema de alertas
+app.use("/api/v1/irrigation", irrigationRoutes); // Rotas para sistema de irrigação
+app.use("/api/v1/reports", reportRoutes); // Rotas para relatórios
 // Serve arquivos estáticos da pasta uploads
 app.use('/uploads', express.static('uploads'));
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Droplets,
   Leaf,
@@ -17,6 +18,7 @@ import {
   Cpu,
   Home,
   Edit,
+  Bell,
 } from "lucide-react";
 import { EnvironmentManager } from "./EnvironmentManager";
 import { UserSettings } from "./UserSettings";
@@ -28,6 +30,7 @@ import sectorService from "../services/sectorService";
 import waterySoilModuleService, {
   WaterySoilModule,
 } from "../services/waterySoilModuleService";
+import alertService, { Alert, CreateAlertData } from "../services/alertService";
 import {
   classifyVWC,
   classifyTemperature,
@@ -39,10 +42,6 @@ import {
   type SoilType,
   type ParameterStatus
 } from "../services/parameterClassification";
-
-interface DashboardProps {
-  onLogout: () => void;
-}
 
 interface UserPreferences {
   active_environment_id: string | null;
@@ -74,7 +73,8 @@ interface SensorData {
   bgColor: string;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
+const Dashboard: React.FC = () => {
+  const navigate = useNavigate();
   const [currentView, setCurrentView] = useState<
     | "dashboard"
     | "environments"
@@ -101,30 +101,487 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
     total: 0,
   });
 
-  const [alerts] = useState([
-    {
-      id: 1,
-      type: "warning",
-      message: "Sensor 3 precisa de calibração",
-      time: "2h atrás",
-    },
-    {
-      id: 2,
-      type: "info",
-      message: "Irrigação programada para 14:00",
-      time: "4h atrás",
-    },
-    {
-      id: 3,
-      type: "success",
-      message: "pH otimizado com sucesso",
-      time: "1 dia atrás",
-    },
-  ]);
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [showCreateAlertModal, setShowCreateAlertModal] = useState(false);
+  const [alertForm, setAlertForm] = useState<CreateAlertData>({
+    type: 'info',
+    message: '',
+    sector_id: '',
+    source: 'manual'
+  });
+  const [loadingAlerts, setLoadingAlerts] = useState(false);
+  const [showAlertSettingsModal, setShowAlertSettingsModal] = useState(false);
+  const [alertSettings, setAlertSettings] = useState({
+    humidity: { min: 20, max: 80, enabled: false },
+    temperature: { min: 15, max: 35, enabled: false },
+    ph: { min: 5.5, max: 7.5, enabled: false },
+    emailNotifications: true,
+    systemNotifications: true
+  });
+  const [activeIrrigation, setActiveIrrigation] = useState<any>(null);
+  const [irrigationTimer, setIrrigationTimer] = useState<number>(0);
+  const [showIrrigationModal, setShowIrrigationModal] = useState(false);
+  const [irrigationDuration, setIrrigationDuration] = useState(30);
+  const [showReportModal, setShowReportModal] = useState(false);
+  const [reportYear, setReportYear] = useState(new Date().getFullYear());
+  const [reportData, setReportData] = useState<any>(null);
+  const [loadingReport, setLoadingReport] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
+
+  // Carregar alertas
+  const loadAlerts = async () => {
+    try {
+      setLoadingAlerts(true);
+      const alertsData = await alertService.getAlerts({ status: 'active', limit: 5 });
+      setAlerts(alertsData);
+
+      // Contar alertas automáticos não lidos (criados nas últimas 24h)
+      const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
+      const recentAutoAlerts = alertsData.filter((alert: Alert) =>
+        alert.isAutomatic &&
+        alert.status === 'active' &&
+        new Date(alert.createdAt).getTime() > oneDayAgo
+      );
+      setUnreadNotifications(recentAutoAlerts.length);
+    } catch (error) {
+      console.error('Erro ao carregar alertas:', error);
+    } finally {
+      setLoadingAlerts(false);
+    }
+  };
+
+  // Criar novo alerta
+  const handleCreateAlert = async () => {
+    if (!alertForm.message.trim()) {
+      alert('Por favor, insira uma mensagem para o alerta');
+      return;
+    }
+
+    try {
+      await alertService.createAlert(alertForm);
+      setShowCreateAlertModal(false);
+      setAlertForm({
+        type: 'info',
+        message: '',
+        sector_id: '',
+        source: 'manual'
+      });
+      loadAlerts(); // Recarregar alertas
+    } catch (error: any) {
+      alert(error.message || 'Erro ao criar alerta');
+    }
+  };
+
+  // Resolver alerta
+  const handleResolveAlert = async (alertId: string) => {
+    try {
+      await alertService.resolveAlert(alertId);
+      loadAlerts(); // Recarregar alertas
+    } catch (error: any) {
+      alert(error.message || 'Erro ao resolver alerta');
+    }
+  };
+
+  // Deletar alerta
+  const handleDeleteAlert = async (alertId: string) => {
+    if (!confirm('Tem certeza que deseja deletar este alerta?')) {
+      return;
+    }
+
+    try {
+      await alertService.deleteAlert(alertId);
+      loadAlerts(); // Recarregar alertas
+    } catch (error: any) {
+      alert(error.message || 'Erro ao deletar alerta');
+    }
+  };
+
+  // Formatar tempo relativo
+  const getRelativeTime = (dateString: string): string => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 60) return `${diffMins}min atrás`;
+    if (diffHours < 24) return `${diffHours}h atrás`;
+    if (diffDays === 1) return '1 dia atrás';
+    return `${diffDays} dias atrás`;
+  };
+
+  // Carregar configurações de alertas
+  const loadAlertSettings = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:3000/api/v1/users/alert-settings', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setAlertSettings(data.alertSettings);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar configurações de alertas:', error);
+    }
+  };
+
+  // Salvar configurações de alertas
+  const handleSaveAlertSettings = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:3000/api/v1/users/alert-settings', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ alertSettings })
+      });
+
+      if (response.ok) {
+        alert('Configurações de alertas salvas com sucesso!');
+        setShowAlertSettingsModal(false);
+      } else {
+        const error = await response.json();
+        alert(error.message || 'Erro ao salvar configurações');
+      }
+    } catch (error: any) {
+      alert(error.message || 'Erro ao salvar configurações');
+    }
+  };
+
+  // Carregar irrigação ativa
+  const loadActiveIrrigation = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:3000/api/v1/irrigation/active', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.irrigations && data.irrigations.length > 0) {
+          setActiveIrrigation(data.irrigations[0]);
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao carregar irrigação ativa:', error);
+    }
+  };
+
+  // Iniciar irrigação
+  const handleStartIrrigation = async () => {
+    if (!selectedSectorId) {
+      alert('Por favor, selecione um setor primeiro');
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:3000/api/v1/irrigation/start', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          sector_id: selectedSectorId,
+          plannedDuration: irrigationDuration
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setActiveIrrigation(data.irrigation);
+        setShowIrrigationModal(false);
+        setIrrigationTimer(0);
+      } else {
+        const error = await response.json();
+        alert(error.message || 'Erro ao iniciar irrigação');
+      }
+    } catch (error: any) {
+      alert(error.message || 'Erro ao iniciar irrigação');
+    }
+  };
+
+  // Parar irrigação
+  const handleStopIrrigation = async () => {
+    if (!activeIrrigation) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:3000/api/v1/irrigation/stop', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          irrigation_id: activeIrrigation._id
+        })
+      });
+
+      if (response.ok) {
+        setActiveIrrigation(null);
+        setIrrigationTimer(0);
+        alert('Irrigação finalizada com sucesso!');
+      } else {
+        const error = await response.json();
+        alert(error.message || 'Erro ao parar irrigação');
+      }
+    } catch (error: any) {
+      alert(error.message || 'Erro ao parar irrigação');
+    }
+  };
+
+  // Cancelar irrigação
+  const handleCancelIrrigation = async () => {
+    if (!activeIrrigation) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:3000/api/v1/irrigation/cancel', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          irrigation_id: activeIrrigation._id
+        })
+      });
+
+      if (response.ok) {
+        setActiveIrrigation(null);
+        setIrrigationTimer(0);
+      } else {
+        const error = await response.json();
+        alert(error.message || 'Erro ao cancelar irrigação');
+      }
+    } catch (error: any) {
+      alert(error.message || 'Erro ao cancelar irrigação');
+    }
+  };
+
+  // Formatar tempo de irrigação
+  const formatIrrigationTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Buscar dados do relatório anual
+  const handleFetchReport = async () => {
+    if (!selectedSectorId) {
+      alert('Por favor, selecione um setor primeiro');
+      return;
+    }
+
+    setLoadingReport(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(
+        `http://localhost:3000/api/v1/reports/annual/${selectedSectorId}/${reportYear}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setReportData(data);
+      } else {
+        const error = await response.json();
+        alert(error.message || 'Erro ao buscar relatório');
+      }
+    } catch (error: any) {
+      alert(error.message || 'Erro ao buscar relatório');
+    } finally {
+      setLoadingReport(false);
+    }
+  };
+
+  // Gerar PDF do relatório
+  const handleGeneratePDF = async () => {
+    if (!reportData) return;
+
+    try {
+      const { jsPDF } = await import('jspdf');
+      const autoTable = (await import('jspdf-autotable')).default;
+
+      const doc = new jsPDF();
+      let yPos = 20;
+
+      // Título
+      doc.setFontSize(20);
+      doc.setTextColor(37, 99, 235); // Azul
+      doc.text('WaterySoil', 20, yPos);
+
+      yPos += 10;
+      doc.setFontSize(16);
+      doc.setTextColor(0, 0, 0);
+      doc.text(`Relatório Anual ${reportData.year}`, 20, yPos);
+
+      yPos += 8;
+      doc.setFontSize(12);
+      doc.setTextColor(100, 100, 100);
+      doc.text(`Setor: ${reportData.sector.name}`, 20, yPos);
+
+      yPos += 8;
+      doc.text(`Período: ${new Date(reportData.period.start).toLocaleDateString('pt-BR')} - ${new Date(reportData.period.end).toLocaleDateString('pt-BR')}`, 20, yPos);
+
+      yPos += 8;
+      doc.text(`Total de Leituras: ${reportData.dataPoints}`, 20, yPos);
+
+      yPos += 15;
+
+      // Estatísticas Gerais
+      doc.setFontSize(14);
+      doc.setTextColor(0, 0, 0);
+      doc.text('Estatísticas Gerais', 20, yPos);
+      yPos += 5;
+
+      autoTable(doc, {
+        startY: yPos,
+        head: [['Parâmetro', 'Mínimo', 'Máximo', 'Média', 'Leituras']],
+        body: [
+          [
+            'Umidade (%)',
+            reportData.statistics.humidity.min.toFixed(1),
+            reportData.statistics.humidity.max.toFixed(1),
+            reportData.statistics.humidity.avg.toFixed(1),
+            reportData.statistics.humidity.count
+          ],
+          [
+            'Temperatura (°C)',
+            reportData.statistics.temperature.min.toFixed(1),
+            reportData.statistics.temperature.max.toFixed(1),
+            reportData.statistics.temperature.avg.toFixed(1),
+            reportData.statistics.temperature.count
+          ],
+          [
+            'pH',
+            reportData.statistics.ph.min.toFixed(2),
+            reportData.statistics.ph.max.toFixed(2),
+            reportData.statistics.ph.avg.toFixed(2),
+            reportData.statistics.ph.count
+          ]
+        ],
+        theme: 'grid',
+        headStyles: { fillColor: [37, 99, 235] }
+      });
+
+      yPos = (doc as any).lastAutoTable.finalY + 15;
+
+      // Estatísticas de Alertas
+      doc.setFontSize(14);
+      doc.text('Estatísticas de Alertas', 20, yPos);
+      yPos += 5;
+
+      autoTable(doc, {
+        startY: yPos,
+        head: [['Tipo', 'Quantidade']],
+        body: [
+          ['Total de Alertas', reportData.alerts.stats.total],
+          ['Alertas Resolvidos', reportData.alerts.stats.resolved],
+          ['Alertas Ativos', reportData.alerts.stats.active],
+          ['Info', reportData.alerts.stats.byType.info],
+          ['Avisos', reportData.alerts.stats.byType.warning],
+          ['Erros', reportData.alerts.stats.byType.error],
+          ['Sucesso', reportData.alerts.stats.byType.success]
+        ],
+        theme: 'grid',
+        headStyles: { fillColor: [37, 99, 235] }
+      });
+
+      yPos = (doc as any).lastAutoTable.finalY + 15;
+
+      // Nova página para dados mensais
+      doc.addPage();
+      yPos = 20;
+
+      doc.setFontSize(14);
+      doc.text('Dados Mensais - Umidade (%)', 20, yPos);
+      yPos += 5;
+
+      autoTable(doc, {
+        startY: yPos,
+        head: [['Mês', 'Média', 'Mínimo', 'Máximo', 'Leituras']],
+        body: reportData.monthlyData.map((m: any) => [
+          m.monthName,
+          m.humidity.avg > 0 ? m.humidity.avg.toFixed(1) : '-',
+          m.humidity.min > 0 ? m.humidity.min.toFixed(1) : '-',
+          m.humidity.max > 0 ? m.humidity.max.toFixed(1) : '-',
+          m.dataPoints
+        ]),
+        theme: 'grid',
+        headStyles: { fillColor: [37, 99, 235] }
+      });
+
+      // Salvar PDF
+      doc.save(`WaterySoil_Relatorio_${reportData.sector.name}_${reportData.year}.pdf`);
+      alert('PDF gerado com sucesso!');
+    } catch (error: any) {
+      console.error('Erro ao gerar PDF:', error);
+      alert('Erro ao gerar PDF: ' + error.message);
+    }
+  };
 
   useEffect(() => {
     loadActiveLocation();
+    loadAlerts();
+    loadAlertSettings();
+    loadActiveIrrigation();
   }, []);
+
+  // Fechar dropdown de notificações ao clicar fora
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (showNotifications && !target.closest('.notification-dropdown')) {
+        setShowNotifications(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showNotifications]);
+
+  // Timer de irrigação
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+
+    if (activeIrrigation) {
+      interval = setInterval(() => {
+        const startTime = new Date(activeIrrigation.startTime).getTime();
+        const now = Date.now();
+        const elapsedSeconds = Math.floor((now - startTime) / 1000);
+        setIrrigationTimer(elapsedSeconds);
+
+        // Auto-stop após duração planejada
+        if (elapsedSeconds >= activeIrrigation.plannedDuration * 60) {
+          handleStopIrrigation();
+        }
+      }, 1000);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [activeIrrigation]);
 
   // Função auxiliar para calcular tendência comparando valor atual com anterior
   const calculateTrend = (currentValue: number, previousValue: number | undefined): "up" | "down" | "stable" => {
@@ -464,8 +921,31 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50">
+      {/* Notificação Persistente de Irrigação Ativa */}
+      {activeIrrigation && (
+        <div className="fixed top-0 left-0 right-0 bg-blue-600 text-white py-3 px-4 shadow-lg z-50">
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <Droplets className="h-5 w-5 animate-pulse" />
+              <div>
+                <p className="font-semibold">Irrigação Ativa</p>
+                <p className="text-sm text-blue-100">
+                  Setor: {activeIrrigation.sector_id?.name || 'N/A'} • Tempo: {formatIrrigationTime(irrigationTimer)} / {activeIrrigation.plannedDuration}min
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={handleCancelIrrigation}
+              className="px-4 py-2 bg-white text-blue-600 rounded-lg hover:bg-blue-50 transition font-medium"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
-      <header className="bg-white/80 backdrop-blur-md shadow-sm border-b border-gray-100">
+      <header className={`bg-white/80 backdrop-blur-md shadow-sm border-b border-gray-100 ${activeIrrigation ? 'mt-16' : ''}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-4">
@@ -519,6 +999,97 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
               >
                 <Calendar className="h-5 w-5" />
               </button>
+              {/* Botão de Notificações */}
+              <div className="relative notification-dropdown">
+                <button
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors relative"
+                  title="Notificações"
+                >
+                  <Bell className="h-5 w-5" />
+                  {unreadNotifications > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                      {unreadNotifications > 9 ? '9+' : unreadNotifications}
+                    </span>
+                  )}
+                </button>
+
+                {/* Dropdown de Notificações */}
+                {showNotifications && (
+                  <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-96 overflow-y-auto">
+                    <div className="p-4 border-b border-gray-200">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-semibold text-gray-900">Notificações</h3>
+                        {unreadNotifications > 0 && (
+                          <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded-full">
+                            {unreadNotifications} novas
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="divide-y divide-gray-100">
+                      {alerts.filter(alert => alert.isAutomatic && alert.status === 'active').length === 0 ? (
+                        <div className="p-4 text-center text-gray-500">
+                          <Bell className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                          <p className="text-sm">Nenhuma notificação</p>
+                        </div>
+                      ) : (
+                        alerts
+                          .filter(alert => alert.isAutomatic && alert.status === 'active')
+                          .slice(0, 5)
+                          .map((alert) => (
+                            <div
+                              key={alert._id}
+                              className="p-4 hover:bg-gray-50 transition-colors cursor-pointer"
+                              onClick={() => {
+                                setShowNotifications(false);
+                                setCurrentView('dashboard');
+                              }}
+                            >
+                              <div className="flex items-start space-x-3">
+                                <div className={`mt-1 ${
+                                  alert.type === 'error' ? 'text-red-500' :
+                                  alert.type === 'warning' ? 'text-yellow-500' :
+                                  alert.type === 'success' ? 'text-green-500' :
+                                  'text-blue-500'
+                                }`}>
+                                  {alert.source === 'humidity' && <Droplets className="h-5 w-5" />}
+                                  {alert.source === 'temperature' && <Thermometer className="h-5 w-5" />}
+                                  {alert.source === 'ph' && <Leaf className="h-5 w-5" />}
+                                  {!['humidity', 'temperature', 'ph'].includes(alert.source) && <AlertTriangle className="h-5 w-5" />}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-gray-900 truncate">
+                                    {alert.message}
+                                  </p>
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    {new Date(alert.createdAt).toLocaleString('pt-BR')}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                      )}
+                    </div>
+
+                    {alerts.filter(alert => alert.isAutomatic && alert.status === 'active').length > 5 && (
+                      <div className="p-3 border-t border-gray-200 text-center">
+                        <button
+                          onClick={() => {
+                            setShowNotifications(false);
+                            setCurrentView('dashboard');
+                          }}
+                          className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                        >
+                          Ver todos os alertas
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
               <button
                 onClick={() => setCurrentView("settings")}
                 className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
@@ -531,7 +1102,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
                   <User className="h-5 w-5 text-white" />
                 </div>
                 <button
-                  onClick={onLogout}
+                  onClick={() => {
+                    localStorage.removeItem('token');
+                    localStorage.removeItem('user');
+                    navigate('/');
+                  }}
                   className="flex items-center space-x-2 text-gray-700 hover:text-red-600 transition-colors"
                 >
                   <LogOut className="h-5 w-5" />
@@ -699,32 +1274,69 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
 
               {/* Recent Alerts */}
               <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  Alertas Recentes
-                </h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-900">
+                    Alertas Recentes
+                  </h3>
+                  <button
+                    onClick={() => setShowCreateAlertModal(true)}
+                    className="text-sm bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 transition"
+                  >
+                    + Criar Alerta
+                  </button>
+                </div>
                 <div className="space-y-3">
-                  {alerts.map((alert) => (
-                    <div
-                      key={alert.id}
-                      className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg"
-                    >
-                      <div
-                        className={`w-2 h-2 rounded-full mt-2 ${
-                          alert.type === "success"
-                            ? "bg-green-500"
-                            : alert.type === "warning"
-                            ? "bg-amber-500"
-                            : "bg-blue-500"
-                        }`}
-                      ></div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-gray-900">{alert.message}</p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {alert.time}
-                        </p>
-                      </div>
+                  {loadingAlerts ? (
+                    <div className="text-center py-4 text-gray-500">
+                      Carregando alertas...
                     </div>
-                  ))}
+                  ) : alerts.length === 0 ? (
+                    <div className="text-center py-4 text-gray-500">
+                      Nenhum alerta ativo
+                    </div>
+                  ) : (
+                    alerts.map((alert) => (
+                      <div
+                        key={alert._id}
+                        className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg group hover:bg-gray-100 transition"
+                      >
+                        <div
+                          className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${
+                            alert.type === "success"
+                              ? "bg-green-500"
+                              : alert.type === "warning"
+                              ? "bg-amber-500"
+                              : alert.type === "error"
+                              ? "bg-red-500"
+                              : "bg-blue-500"
+                          }`}
+                        ></div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-gray-900">{alert.message}</p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {getRelativeTime(alert.createdAt)}
+                            {alert.sector_id && ` • ${alert.sector_id.name}`}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+                          <button
+                            onClick={() => handleResolveAlert(alert._id)}
+                            className="p-1 text-green-600 hover:bg-green-50 rounded"
+                            title="Resolver"
+                          >
+                            <CheckCircle size={16} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteAlert(alert._id)}
+                            className="p-1 text-red-600 hover:bg-red-50 rounded"
+                            title="Deletar"
+                          >
+                            <AlertTriangle size={16} />
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
 
@@ -734,23 +1346,33 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
                   Ações Rápidas
                 </h3>
                 <div className="space-y-3">
-                  <button className="w-full text-left p-3 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
+                  <button
+                    onClick={() => setShowIrrigationModal(true)}
+                    disabled={!!activeIrrigation}
+                    className="w-full text-left p-3 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
                     <div className="flex items-center space-x-3">
                       <Droplets className="h-5 w-5 text-blue-600" />
                       <span className="text-sm text-blue-700 font-medium">
-                        Ativar Irrigação
+                        {activeIrrigation ? 'Irrigação Ativa' : 'Ativar Irrigação'}
                       </span>
                     </div>
                   </button>
-                  <button className="w-full text-left p-3 bg-green-50 hover:bg-green-100 rounded-lg transition-colors">
+                  <button
+                    onClick={() => setShowReportModal(true)}
+                    className="w-full text-left p-3 bg-green-50 hover:bg-green-100 rounded-lg transition-colors"
+                  >
                     <div className="flex items-center space-x-3">
                       <BarChart3 className="h-5 w-5 text-green-600" />
                       <span className="text-sm text-green-700 font-medium">
-                        Ver Relatório
+                        Ver Relatório Anual
                       </span>
                     </div>
                   </button>
-                  <button className="w-full text-left p-3 bg-amber-50 hover:bg-amber-100 rounded-lg transition-colors">
+                  <button
+                    onClick={() => setShowAlertSettingsModal(true)}
+                    className="w-full text-left p-3 bg-amber-50 hover:bg-amber-100 rounded-lg transition-colors"
+                  >
                     <div className="flex items-center space-x-3">
                       <Settings className="h-5 w-5 text-amber-600" />
                       <span className="text-sm text-amber-700 font-medium">
@@ -833,6 +1455,538 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
                 Salvar
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Criar Alerta */}
+      {showCreateAlertModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">
+              Criar Novo Alerta
+            </h3>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Tipo de Alerta
+                </label>
+                <select
+                  value={alertForm.type}
+                  onChange={(e) => setAlertForm({ ...alertForm, type: e.target.value as any })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="info">Informação</option>
+                  <option value="warning">Aviso</option>
+                  <option value="error">Erro</option>
+                  <option value="success">Sucesso</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Mensagem
+                </label>
+                <textarea
+                  value={alertForm.message}
+                  onChange={(e) => setAlertForm({ ...alertForm, message: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  rows={3}
+                  placeholder="Digite a mensagem do alerta..."
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Setor (Opcional)
+                </label>
+                <select
+                  value={alertForm.sector_id || ''}
+                  onChange={(e) => setAlertForm({ ...alertForm, sector_id: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">Nenhum setor específico</option>
+                  {availableSectors.map((sector: any) => (
+                    <option key={sector._id} value={sector._id}>
+                      {sector.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowCreateAlertModal(false);
+                  setAlertForm({
+                    type: 'info',
+                    message: '',
+                    sector_id: '',
+                    source: 'manual'
+                  });
+                }}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleCreateAlert}
+                disabled={!alertForm.message.trim()}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                Criar Alerta
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Configuração de Alertas */}
+      {showAlertSettingsModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-2xl w-full shadow-xl max-h-[90vh] overflow-y-auto">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">
+              Configurar Alertas Automáticos
+            </h3>
+
+            <div className="space-y-6">
+              {/* Umidade */}
+              <div className="border border-gray-200 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-semibold text-gray-900 flex items-center gap-2">
+                    <Droplets className="h-5 w-5 text-blue-600" />
+                    Umidade do Solo (%)
+                  </h4>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={alertSettings.humidity.enabled}
+                      onChange={(e) => setAlertSettings({
+                        ...alertSettings,
+                        humidity: { ...alertSettings.humidity, enabled: e.target.checked }
+                      })}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Mínimo
+                    </label>
+                    <input
+                      type="number"
+                      value={alertSettings.humidity.min}
+                      onChange={(e) => setAlertSettings({
+                        ...alertSettings,
+                        humidity: { ...alertSettings.humidity, min: parseFloat(e.target.value) }
+                      })}
+                      disabled={!alertSettings.humidity.enabled}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Máximo
+                    </label>
+                    <input
+                      type="number"
+                      value={alertSettings.humidity.max}
+                      onChange={(e) => setAlertSettings({
+                        ...alertSettings,
+                        humidity: { ...alertSettings.humidity, max: parseFloat(e.target.value) }
+                      })}
+                      disabled={!alertSettings.humidity.enabled}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Temperatura */}
+              <div className="border border-gray-200 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-semibold text-gray-900 flex items-center gap-2">
+                    <Thermometer className="h-5 w-5 text-red-600" />
+                    Temperatura (°C)
+                  </h4>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={alertSettings.temperature.enabled}
+                      onChange={(e) => setAlertSettings({
+                        ...alertSettings,
+                        temperature: { ...alertSettings.temperature, enabled: e.target.checked }
+                      })}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Mínimo
+                    </label>
+                    <input
+                      type="number"
+                      value={alertSettings.temperature.min}
+                      onChange={(e) => setAlertSettings({
+                        ...alertSettings,
+                        temperature: { ...alertSettings.temperature, min: parseFloat(e.target.value) }
+                      })}
+                      disabled={!alertSettings.temperature.enabled}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Máximo
+                    </label>
+                    <input
+                      type="number"
+                      value={alertSettings.temperature.max}
+                      onChange={(e) => setAlertSettings({
+                        ...alertSettings,
+                        temperature: { ...alertSettings.temperature, max: parseFloat(e.target.value) }
+                      })}
+                      disabled={!alertSettings.temperature.enabled}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* pH */}
+              <div className="border border-gray-200 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-semibold text-gray-900 flex items-center gap-2">
+                    <Leaf className="h-5 w-5 text-green-600" />
+                    pH do Solo
+                  </h4>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={alertSettings.ph.enabled}
+                      onChange={(e) => setAlertSettings({
+                        ...alertSettings,
+                        ph: { ...alertSettings.ph, enabled: e.target.checked }
+                      })}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Mínimo
+                    </label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={alertSettings.ph.min}
+                      onChange={(e) => setAlertSettings({
+                        ...alertSettings,
+                        ph: { ...alertSettings.ph, min: parseFloat(e.target.value) }
+                      })}
+                      disabled={!alertSettings.ph.enabled}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Máximo
+                    </label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={alertSettings.ph.max}
+                      onChange={(e) => setAlertSettings({
+                        ...alertSettings,
+                        ph: { ...alertSettings.ph, max: parseFloat(e.target.value) }
+                      })}
+                      disabled={!alertSettings.ph.enabled}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Notificações */}
+              <div className="border border-gray-200 rounded-lg p-4">
+                <h4 className="font-semibold text-gray-900 mb-3">Notificações</h4>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-700">Notificações por Email</span>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={alertSettings.emailNotifications}
+                        onChange={(e) => setAlertSettings({
+                          ...alertSettings,
+                          emailNotifications: e.target.checked
+                        })}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-700">Notificações do Sistema</span>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={alertSettings.systemNotifications}
+                        onChange={(e) => setAlertSettings({
+                          ...alertSettings,
+                          systemNotifications: e.target.checked
+                        })}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowAlertSettingsModal(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSaveAlertSettings}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+              >
+                Salvar Configurações
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Iniciar Irrigação */}
+      {showIrrigationModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-xl">
+            <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <Droplets className="h-6 w-6 text-blue-600" />
+              Iniciar Irrigação
+            </h3>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Setor Selecionado
+                </label>
+                <div className="px-4 py-3 bg-gray-50 rounded-lg border border-gray-200">
+                  <p className="text-gray-900 font-medium">
+                    {availableSectors.find(s => s._id === selectedSectorId)?.name || 'Nenhum setor selecionado'}
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Duração (minutos)
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="120"
+                  value={irrigationDuration}
+                  onChange={(e) => setIrrigationDuration(parseInt(e.target.value))}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Recomendado: 20-40 minutos
+                </p>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p className="text-sm text-blue-800">
+                  <strong>Atenção:</strong> A irrigação será iniciada imediatamente e você poderá acompanhar o progresso na barra superior.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowIrrigationModal(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleStartIrrigation}
+                disabled={!selectedSectorId}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Iniciar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Relatório Anual */}
+      {showReportModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-4xl w-full shadow-xl max-h-[90vh] overflow-y-auto">
+            <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <BarChart3 className="h-6 w-6 text-green-600" />
+              Relatório Anual
+            </h3>
+
+            {!reportData ? (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Setor Selecionado
+                  </label>
+                  <div className="px-4 py-3 bg-gray-50 rounded-lg border border-gray-200">
+                    <p className="text-gray-900 font-medium">
+                      {availableSectors.find(s => s._id === selectedSectorId)?.name || 'Nenhum setor selecionado'}
+                    </p>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Ano
+                  </label>
+                  <select
+                    value={reportYear}
+                    onChange={(e) => setReportYear(parseInt(e.target.value))}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  >
+                    {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(year => (
+                      <option key={year} value={year}>{year}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex gap-3 mt-6">
+                  <button
+                    onClick={() => setShowReportModal(false)}
+                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleFetchReport}
+                    disabled={!selectedSectorId || loadingReport}
+                    className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loadingReport ? 'Carregando...' : 'Buscar Dados'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {/* Informações do Relatório */}
+                <div className="bg-gradient-to-r from-blue-50 to-green-50 rounded-lg p-4 border border-gray-200">
+                  <h4 className="font-semibold text-gray-900 mb-2">Informações do Relatório</h4>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-gray-600">Setor:</p>
+                      <p className="font-medium text-gray-900">{reportData.sector.name}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600">Ano:</p>
+                      <p className="font-medium text-gray-900">{reportData.year}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600">Total de Leituras:</p>
+                      <p className="font-medium text-gray-900">{reportData.dataPoints}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600">Alertas:</p>
+                      <p className="font-medium text-gray-900">{reportData.alerts.stats.total}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Estatísticas Gerais */}
+                <div>
+                  <h4 className="font-semibold text-gray-900 mb-3">Estatísticas Gerais</h4>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                      <p className="text-sm text-blue-600 font-medium mb-2">Umidade (%)</p>
+                      <p className="text-xs text-gray-600">Média: <span className="font-semibold">{reportData.statistics.humidity.avg.toFixed(1)}</span></p>
+                      <p className="text-xs text-gray-600">Min: {reportData.statistics.humidity.min.toFixed(1)} | Max: {reportData.statistics.humidity.max.toFixed(1)}</p>
+                    </div>
+                    <div className="bg-red-50 rounded-lg p-4 border border-red-200">
+                      <p className="text-sm text-red-600 font-medium mb-2">Temperatura (°C)</p>
+                      <p className="text-xs text-gray-600">Média: <span className="font-semibold">{reportData.statistics.temperature.avg.toFixed(1)}</span></p>
+                      <p className="text-xs text-gray-600">Min: {reportData.statistics.temperature.min.toFixed(1)} | Max: {reportData.statistics.temperature.max.toFixed(1)}</p>
+                    </div>
+                    <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+                      <p className="text-sm text-green-600 font-medium mb-2">pH</p>
+                      <p className="text-xs text-gray-600">Média: <span className="font-semibold">{reportData.statistics.ph.avg.toFixed(2)}</span></p>
+                      <p className="text-xs text-gray-600">Min: {reportData.statistics.ph.min.toFixed(2)} | Max: {reportData.statistics.ph.max.toFixed(2)}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Estatísticas de Alertas */}
+                <div>
+                  <h4 className="font-semibold text-gray-900 mb-3">Estatísticas de Alertas</h4>
+                  <div className="grid grid-cols-4 gap-3">
+                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-200 text-center">
+                      <p className="text-2xl font-bold text-gray-900">{reportData.alerts.stats.total}</p>
+                      <p className="text-xs text-gray-600">Total</p>
+                    </div>
+                    <div className="bg-blue-50 rounded-lg p-3 border border-blue-200 text-center">
+                      <p className="text-2xl font-bold text-blue-600">{reportData.alerts.stats.byType.info}</p>
+                      <p className="text-xs text-gray-600">Info</p>
+                    </div>
+                    <div className="bg-amber-50 rounded-lg p-3 border border-amber-200 text-center">
+                      <p className="text-2xl font-bold text-amber-600">{reportData.alerts.stats.byType.warning}</p>
+                      <p className="text-xs text-gray-600">Avisos</p>
+                    </div>
+                    <div className="bg-red-50 rounded-lg p-3 border border-red-200 text-center">
+                      <p className="text-2xl font-bold text-red-600">{reportData.alerts.stats.byType.error}</p>
+                      <p className="text-xs text-gray-600">Erros</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Botões de Ação */}
+                <div className="flex gap-3 pt-4 border-t border-gray-200">
+                  <button
+                    onClick={() => {
+                      setReportData(null);
+                      setShowReportModal(false);
+                    }}
+                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+                  >
+                    Fechar
+                  </button>
+                  <button
+                    onClick={() => {
+                      setReportData(null);
+                    }}
+                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+                  >
+                    Nova Consulta
+                  </button>
+                  <button
+                    onClick={handleGeneratePDF}
+                    className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition"
+                  >
+                    Gerar PDF
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
