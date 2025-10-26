@@ -13,7 +13,7 @@ import {
   ChartOptions
 } from 'chart.js';
 import { Line, Bar } from 'react-chartjs-2';
-import { Calendar, TrendingUp, Activity } from 'lucide-react';
+import { Calendar, TrendingUp, Activity, BarChart3 } from 'lucide-react';
 
 // Registrar componentes do Chart.js
 ChartJS.register(
@@ -45,7 +45,7 @@ interface SensorChartsProps {
   sectorId: string | null;
 }
 
-type TimeRange = 'daily' | 'weekly' | 'monthly';
+type TimeRange = 'daily' | 'weekly' | 'monthly' | 'yearly';
 
 const SensorCharts: React.FC<SensorChartsProps> = ({ sectorId }) => {
   const [timeRange, setTimeRange] = useState<TimeRange>('daily');
@@ -337,6 +337,7 @@ const SensorCharts: React.FC<SensorChartsProps> = ({ sectorId }) => {
       case 'daily': return 'Últimas 24 Horas';
       case 'weekly': return 'Últimos 7 Dias';
       case 'monthly': return 'Últimos 30 Dias';
+      case 'yearly': return 'Últimos 12 Meses';
     }
   };
 
@@ -384,6 +385,17 @@ const SensorCharts: React.FC<SensorChartsProps> = ({ sectorId }) => {
           >
             <Activity className="h-4 w-4 inline mr-1" />
             Mensal
+          </button>
+          <button
+            onClick={() => setTimeRange('yearly')}
+            className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
+              timeRange === 'yearly'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <BarChart3 className="h-4 w-4 inline mr-1" />
+            Anual
           </button>
         </div>
       </div>

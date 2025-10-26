@@ -472,6 +472,19 @@ const getAggregatedForCharts = async (req, res) => {
       for (let i = 1; i <= dataPoints; i++) {
         labels.push(i.toString().padStart(2, '0'));
       }
+    } else if (timeRange === 'yearly') {
+      // Anual: últimos 12 meses
+      const today = new Date();
+      const firstDayOfYear = new Date(today.getFullYear(), 0, 1); // 1º de janeiro
+      firstDayOfYear.setHours(0, 0, 0, 0);
+      start = firstDayOfYear;
+
+      dataPoints = 12; // 12 meses
+      groupBy = 30 * 24 * 60 * 60 * 1000; // ~30 dias em ms (aproximado)
+
+      // Gerar labels: Jan, Fev, Mar, ..., Dez
+      const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+      labels = [...months];
     } else {
       // Fallback: últimos 30 dias
       start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
@@ -535,8 +548,18 @@ const getAggregatedForCharts = async (req, res) => {
 
     // Criar intervalos de tempo
     for (let i = 0; i < dataPoints; i++) {
-      const intervalStart = new Date(start.getTime() + i * groupBy);
-      const intervalEnd = new Date(intervalStart.getTime() + groupBy);
+      let intervalStart, intervalEnd;
+
+      if (timeRange === 'yearly') {
+        // Para anual, usar meses completos
+        const year = start.getFullYear();
+        intervalStart = new Date(year, i, 1); // Primeiro dia do mês
+        intervalEnd = new Date(year, i + 1, 1); // Primeiro dia do próximo mês
+      } else {
+        // Para outros períodos, usar groupBy
+        intervalStart = new Date(start.getTime() + i * groupBy);
+        intervalEnd = new Date(intervalStart.getTime() + groupBy);
+      }
 
       // Filtrar dados neste intervalo
       const intervalData = sensorData.filter(d => {
