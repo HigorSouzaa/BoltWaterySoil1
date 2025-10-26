@@ -453,7 +453,10 @@
                 <h2>⚙️ Configurações Globais</h2>
                 
                 <div class="alert alert-info">
-                    ℹ️ Configure o MAC Address e o intervalo de envio. Certifique-se de que o dispositivo está registrado e vinculado a um módulo.
+                    ℹ️ <strong></strong>Configuração Inteligente:</strong><br>
+                    • <strong>Tempo Real (2s):</strong> Atualiza o módulo WaterySoil para exibição em tempo real no dashboard<br>
+                    • <strong>Histórico (10min):</strong> Salva no banco de dados (data_sensors) para relatórios e análises<br>
+                    • Isso evita entupir o banco de dados mantendo a interface responsiva! 🚀
                 </div>
 
                 <div class="form-group">
@@ -468,15 +471,33 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="interval">Intervalo de Envio (ms)</label>
-                    <input 
-                        type="number" 
-                        id="interval" 
+                    <label for="realtime_interval">Intervalo Tempo Real (ms) - Atualização do Módulo</label>
+                    <input
+                        type="number"
+                        id="realtime_interval"
                         placeholder="2000"
                         value="2000"
                         min="1000"
                         step="500"
                     >
+                    <small style="color: #666; display: block; margin-top: 5px;">
+                        ⏱️ Frequência de atualização dos dados em tempo real (recomendado: 2000ms)
+                    </small>
+                </div>
+
+                <div class="form-group">
+                    <label for="history_interval">Intervalo Histórico (ms) - Salvar no Banco</label>
+                    <input
+                        type="number"
+                        id="history_interval"
+                        placeholder="600000"
+                        value="600000"
+                        min="60000"
+                        step="60000"
+                    >
+                    <small style="color: #666; display: block; margin-top: 5px;">
+                        💾 Frequência de salvamento no histórico (recomendado: 600000ms = 10 minutos)
+                    </small>
                 </div>
 
                 <div class="form-group">
@@ -603,14 +624,36 @@
         const state = {
             masterEnabled: false,
             simulators: {
-                ideal: { enabled: false, interval: null, device: null, module: null },
-                good: { enabled: false, interval: null, device: null, module: null },
-                bad: { enabled: false, interval: null, device: null, module: null }
+                ideal: {
+                    enabled: false,
+                    realtimeInterval: null,  // Intervalo para atualização em tempo real (2s)
+                    historyInterval: null,   // Intervalo para salvar histórico (10min)
+                    device: null,
+                    module: null,
+                    sendCount: 0  // Contador de envios
+                },
+                good: {
+                    enabled: false,
+                    realtimeInterval: null,
+                    historyInterval: null,
+                    device: null,
+                    module: null,
+                    sendCount: 0
+                },
+                bad: {
+                    enabled: false,
+                    realtimeInterval: null,
+                    historyInterval: null,
+                    device: null,
+                    module: null,
+                    sendCount: 0
+                }
             },
             config: {
                 macAddress: 'AA:BB:CC:DD:EE:FF',
-                interval: 2000,
-                apiUrl: 'https://backend-waterysoil.onrender.com/api/v1'
+                realtimeInterval: 2000,      // 2 segundos - atualização em tempo real
+                historyInterval: 600000,     // 10 minutos - salvar no histórico
+                apiUrl: 'http://localhost:3000/api/v1'
             }
         };
 
@@ -640,7 +683,8 @@
 
         function updateConfig() {
             state.config.macAddress = document.getElementById('mac_address').value;
-            state.config.interval = parseInt(document.getElementById('interval').value);
+            state.config.realtimeInterval = parseInt(document.getElementById('realtime_interval').value);
+            state.config.historyInterval = parseInt(document.getElementById('history_interval').value);
             state.config.apiUrl = document.getElementById('api_url').value;
         }
 
@@ -751,7 +795,74 @@
             }
         }
 
-        async function sendSensorData(type) {
+        /**
+         * Envia dados em TEMPO REAL - Atualiza apenas o WaterySoilModule
+         * Não salva no histórico (data_sensors)
+         */
+        async function sendRealtimeData(type) {
+            const sim = state.simulators[type];
+            if (!sim.module || !sim.lastData) return;
+
+            try {
+                const newData = dataGenerators[type](sim.lastData);
+                sim.lastData = newData;
+                sim.sendCount++;
+
+                const payload = {
+                    sensor_data: {
+                        soil_moisture: {
+                            value: parseFloat(newData.soil_moisture.toFixed(1)),
+                            last_update: new Date()
+                        },
+                        temperature: {
+                            value: parseFloat(newData.temperature.toFixed(1)),
+                            last_update: new Date()
+                        },
+                        npk: {
+                            nitrogen: parseFloat(newData.nitrogen.toFixed(1)),
+                            phosphorus: parseFloat(newData.phosphorus.toFixed(1)),
+                            potassium: parseFloat(newData.potassium.toFixed(1)),
+                            last_update: new Date()
+                        },
+                        ph: {
+                            value: parseFloat(newData.ph.toFixed(2)),
+                            last_update: new Date()
+                        }
+                    },
+                    save_to_history: false  // NÃO salvar no histórico
+                };
+
+                const response = await fetch(
+                    `${state.config.apiUrl}/waterysoil-modules/${sim.module._id}/sensor-data`,
+                    {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    }
+                );
+
+                const data = await response.json();
+
+                if (data.success) {
+                    const icon = type === 'ideal' ? '🌱' : type === 'good' ? '🟡' : '🔴';
+                    addLog(
+                        `${icon} [${type.toUpperCase()}] ⚡ Tempo Real #${sim.sendCount}: ` +
+                        `Umidade: ${newData.soil_moisture.toFixed(1)}%, ` +
+                        `Temp: ${newData.temperature.toFixed(1)}°C, ` +
+                        `pH: ${newData.ph.toFixed(2)}`,
+                        'info'
+                    );
+                }
+            } catch (error) {
+                addLog(`❌ [${type.toUpperCase()}] Erro ao enviar dados em tempo real: ${error.message}`, 'error');
+            }
+        }
+
+        /**
+         * Envia dados para HISTÓRICO - Salva no data_sensors
+         * Também atualiza o WaterySoilModule
+         */
+        async function sendHistoricalData(type) {
             const sim = state.simulators[type];
             if (!sim.module || !sim.lastData) return;
 
@@ -779,7 +890,8 @@
                             value: parseFloat(newData.ph.toFixed(2)),
                             last_update: new Date()
                         }
-                    }
+                    },
+                    save_to_history: true  // SALVAR no histórico
                 };
 
                 const response = await fetch(
@@ -796,7 +908,7 @@
                 if (data.success) {
                     const icon = type === 'ideal' ? '🌱' : type === 'good' ? '🟡' : '🔴';
                     addLog(
-                        `${icon} [${type.toUpperCase()}] Dados enviados: ` +
+                        `${icon} [${type.toUpperCase()}] 💾 HISTÓRICO SALVO: ` +
                         `Umidade: ${newData.soil_moisture.toFixed(1)}%, ` +
                         `Temp: ${newData.temperature.toFixed(1)}°C, ` +
                         `pH: ${newData.ph.toFixed(2)}`,
@@ -804,7 +916,7 @@
                     );
                 }
             } catch (error) {
-                addLog(`❌ [${type.toUpperCase()}] Erro ao enviar dados: ${error.message}`, 'error');
+                addLog(`❌ [${type.toUpperCase()}] Erro ao salvar histórico: ${error.message}`, 'error');
             }
         }
 
@@ -828,36 +940,56 @@
 
             state.simulators[type].enabled = true;
             state.simulators[type].lastData = { ...initialData[type] };
+            state.simulators[type].sendCount = 0;
 
-            // Enviar dados imediatamente
-            await sendSensorData(type);
-
-            // Configurar intervalo
+            // Atualizar configurações
             updateConfig();
-            state.simulators[type].interval = setInterval(() => {
-                sendSensorData(type);
-            }, state.config.interval);
+
+            // Enviar dados imediatamente (histórico)
+            await sendHistoricalData(type);
+
+            // Configurar intervalo de TEMPO REAL (2 segundos)
+            state.simulators[type].realtimeInterval = setInterval(() => {
+                sendRealtimeData(type);
+            }, state.config.realtimeInterval);
+
+            // Configurar intervalo de HISTÓRICO (10 minutos)
+            state.simulators[type].historyInterval = setInterval(() => {
+                sendHistoricalData(type);
+            }, state.config.historyInterval);
 
             // Atualizar UI
             document.getElementById(`card-${type}`).classList.add('active');
             document.getElementById(`status-${type}`).textContent = '🟢 Rodando';
             document.getElementById(`status-${type}`).className = 'status-badge status-running';
 
-            addLog(`✅ [${type.toUpperCase()}] Simulador ativado com sucesso!`, 'success');
+            addLog(
+                `✅ [${type.toUpperCase()}] Simulador ativado!` +
+                ` ⚡ Tempo Real: ${state.config.realtimeInterval/1000}s` +
+                ` | 💾 Histórico: ${state.config.historyInterval/60000}min`,
+                'success'
+            );
         }
 
         function stopSimulator(type) {
             if (!state.simulators[type].enabled) return;
 
-            if (state.simulators[type].interval) {
-                clearInterval(state.simulators[type].interval);
-                state.simulators[type].interval = null;
+            // Limpar intervalos
+            if (state.simulators[type].realtimeInterval) {
+                clearInterval(state.simulators[type].realtimeInterval);
+                state.simulators[type].realtimeInterval = null;
+            }
+
+            if (state.simulators[type].historyInterval) {
+                clearInterval(state.simulators[type].historyInterval);
+                state.simulators[type].historyInterval = null;
             }
 
             state.simulators[type].enabled = false;
             state.simulators[type].device = null;
             state.simulators[type].module = null;
             state.simulators[type].lastData = null;
+            state.simulators[type].sendCount = 0;
 
             // Atualizar UI
             document.getElementById(`card-${type}`).classList.remove('active');

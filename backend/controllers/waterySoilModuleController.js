@@ -455,7 +455,10 @@ const getWaterySoilModuleByMAC = async (req, res) => {
 // PUT /api/v1/waterysoil-modules/:id/sensor-data - Atualizar dados dos sensores
 const updateSensorData = async (req, res) => {
   try {
-    const { sensor_data, metadata, reading_timestamp } = req.body;
+    const { sensor_data, metadata, reading_timestamp, save_to_history } = req.body;
+
+    // Por padrão, salva no histórico (compatibilidade com código antigo)
+    const shouldSaveHistory = save_to_history !== false;
 
     const module = await WaterySoilModule.findOne({
       _id: req.params.id,
@@ -478,14 +481,14 @@ const updateSensorData = async (req, res) => {
     // ========================================
     // DETERMINAR O TIMESTAMP DA LEITURA
     // ========================================
-    
+
     // Prioridade:
     // 1. reading_timestamp enviado no body
     // 2. last_update do primeiro sensor disponível
     // 3. Data atual como fallback
-    
+
     let timestampToUse = new Date();
-    
+
     if (reading_timestamp) {
       timestampToUse = new Date(reading_timestamp);
     } else if (sensor_data?.soil_moisture?.last_update) {
@@ -499,29 +502,33 @@ const updateSensorData = async (req, res) => {
     }
 
     // ========================================
-    // 1. SALVAR NO HISTÓRICO (DataSensors)
+    // 1. SALVAR NO HISTÓRICO (DataSensors) - OPCIONAL
     // ========================================
 
-    const historicalData = new DataSensors({
-      module_id: module._id,
-      mac_address: module.mac_address,
-      sector_id: module.sector_id,
-      serial_number: ecoSoilDevice?.serial_number || null,
-      reading_timestamp: timestampToUse, // ✅ Usa o timestamp correto!
-      sensor_data: sensor_data,
-      metadata: {
-        firmware_version: ecoSoilDevice?.firmware_version || module.firmware_version,
-        ip_address: module.ip_address,
-        signal_strength: metadata?.signal_strength,
-        battery_level: metadata?.battery_level,
-        location: metadata?.location,
-        notes: metadata?.notes
-      },
-      status: 'valid'
-    });
+    let historicalData = null;
 
-    // Salva no histórico
-    await historicalData.save();
+    if (shouldSaveHistory) {
+      historicalData = new DataSensors({
+        module_id: module._id,
+        mac_address: module.mac_address,
+        sector_id: module.sector_id,
+        serial_number: ecoSoilDevice?.serial_number || null,
+        reading_timestamp: timestampToUse,
+        sensor_data: sensor_data,
+        metadata: {
+          firmware_version: ecoSoilDevice?.firmware_version || module.firmware_version,
+          ip_address: module.ip_address,
+          signal_strength: metadata?.signal_strength,
+          battery_level: metadata?.battery_level,
+          location: metadata?.location,
+          notes: metadata?.notes
+        },
+        status: 'valid'
+      });
+
+      // Salva no histórico
+      await historicalData.save();
+    }
 
     // ========================================
     // 2. ATUALIZAR DADOS ATUAIS DO MÓDULO
@@ -567,19 +574,27 @@ const updateSensorData = async (req, res) => {
     // 4. RETORNAR RESPOSTA
     // ========================================
 
-    return res.status(200).json({
+    const response = {
       success: true,
       data: {
         module: module,
-        historical_record: {
-          id: historicalData._id,
-          timestamp: historicalData.reading_timestamp,
-          is_valid: historicalData.validation.is_valid,
-          validation_messages: historicalData.validation.messages
-        }
-      },
-      message: "Dados dos sensores atualizados e salvos no histórico com sucesso"
-    });
+        saved_to_history: shouldSaveHistory
+      }
+    };
+
+    if (shouldSaveHistory && historicalData) {
+      response.data.historical_record = {
+        id: historicalData._id,
+        timestamp: historicalData.reading_timestamp,
+        is_valid: historicalData.validation.is_valid,
+        validation_messages: historicalData.validation.messages
+      };
+      response.message = "Dados dos sensores atualizados e salvos no histórico com sucesso";
+    } else {
+      response.message = "Dados dos sensores atualizados em tempo real (não salvo no histórico)";
+    }
+
+    return res.status(200).json(response);
   } catch (error) {
     console.error('Erro ao atualizar dados dos sensores:', error);
     return res.status(500).json({
