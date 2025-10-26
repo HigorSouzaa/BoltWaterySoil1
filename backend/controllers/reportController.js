@@ -11,8 +11,11 @@ const getAnnualReport = async (req, res) => {
     const userId = req.user._id;
     const { sectorId, year } = req.params;
 
+    console.log('📊 Gerando relatório anual:', { userId, sectorId, year });
+
     // Validações
     if (!sectorId || !year) {
+      console.error('❌ Parâmetros faltando:', { sectorId, year });
       return res.status(400).json({
         message: 'ID do setor e ano são obrigatórios'
       });
@@ -26,8 +29,12 @@ const getAnnualReport = async (req, res) => {
     }
 
     // Verificar se o setor existe e pertence ao usuário
+    console.log('🔍 Buscando setor:', { _id: sectorId, user_id: userId });
     const sector = await Sector.findOne({ _id: sectorId, user_id: userId });
+    console.log('📍 Setor encontrado:', sector);
+
     if (!sector) {
+      console.error('❌ Setor não encontrado');
       return res.status(404).json({
         message: 'Setor não encontrado'
       });
@@ -38,23 +45,31 @@ const getAnnualReport = async (req, res) => {
     const endDate = new Date(yearNum, 11, 31, 23, 59, 59); // 31 de dezembro
 
     // Buscar dados de sensores do ano
+    console.log('🔍 Buscando dados de sensores:', { sector_id: sectorId, startDate, endDate });
     const sensorData = await DataSensor.find({
       sector_id: sectorId,
       timestamp: { $gte: startDate, $lte: endDate }
     }).sort({ timestamp: 1 });
+    console.log('📊 Dados de sensores encontrados:', sensorData.length);
 
     // Buscar alertas do ano
+    console.log('🔍 Buscando alertas:', { user_id: userId, sector_id: sectorId });
     const alerts = await Alert.find({
       user_id: userId,
       sector_id: sectorId,
       createdAt: { $gte: startDate, $lte: endDate }
     }).sort({ createdAt: -1 });
+    console.log('🚨 Alertas encontrados:', alerts.length);
 
     // Calcular estatísticas
+    console.log('📈 Calculando estatísticas...');
     const statistics = calculateStatistics(sensorData);
+    console.log('📈 Estatísticas calculadas:', statistics);
 
     // Agrupar dados por mês
+    console.log('📅 Agrupando dados por mês...');
     const monthlyData = groupByMonth(sensorData);
+    console.log('📅 Dados mensais:', monthlyData.length);
 
     // Estatísticas de alertas
     const alertStats = {
@@ -95,9 +110,11 @@ const getAnnualReport = async (req, res) => {
       dataPoints: sensorData.length
     });
   } catch (error) {
-    console.error('Erro ao gerar relatório anual:', error);
+    console.error('❌ Erro ao gerar relatório anual:', error);
+    console.error('Stack trace:', error.stack);
     return res.status(500).json({
-      message: 'Erro ao gerar relatório anual'
+      message: 'Erro ao gerar relatório anual',
+      error: error.message
     });
   }
 };
@@ -110,26 +127,53 @@ function calculateStatistics(sensorData) {
     return {
       humidity: { min: 0, max: 0, avg: 0, count: 0 },
       temperature: { min: 0, max: 0, avg: 0, count: 0 },
-      ph: { min: 0, max: 0, avg: 0, count: 0 }
+      ph: { min: 0, max: 0, avg: 0, count: 0 },
+      npk: {
+        nitrogen: { min: 0, max: 0, avg: 0, count: 0 },
+        phosphorus: { min: 0, max: 0, avg: 0, count: 0 },
+        potassium: { min: 0, max: 0, avg: 0, count: 0 }
+      }
     };
   }
 
   const stats = {
     humidity: { values: [], min: 0, max: 0, avg: 0, count: 0 },
     temperature: { values: [], min: 0, max: 0, avg: 0, count: 0 },
-    ph: { values: [], min: 0, max: 0, avg: 0, count: 0 }
+    ph: { values: [], min: 0, max: 0, avg: 0, count: 0 },
+    npk: {
+      nitrogen: { values: [], min: 0, max: 0, avg: 0, count: 0 },
+      phosphorus: { values: [], min: 0, max: 0, avg: 0, count: 0 },
+      potassium: { values: [], min: 0, max: 0, avg: 0, count: 0 }
+    }
   };
 
-  // Coletar valores
+  // Coletar valores (estrutura aninhada do DataSensors)
   sensorData.forEach(data => {
-    if (data.soil_moisture !== undefined && data.soil_moisture !== null) {
-      stats.humidity.values.push(data.soil_moisture);
+    // Acessar valores aninhados em sensor_data
+    const soilMoisture = data.sensor_data?.soil_moisture?.value;
+    const temperature = data.sensor_data?.temperature?.value;
+    const ph = data.sensor_data?.ph?.value;
+    const nitrogen = data.sensor_data?.npk?.nitrogen;
+    const phosphorus = data.sensor_data?.npk?.phosphorus;
+    const potassium = data.sensor_data?.npk?.potassium;
+
+    if (soilMoisture !== undefined && soilMoisture !== null) {
+      stats.humidity.values.push(soilMoisture);
     }
-    if (data.temperature !== undefined && data.temperature !== null) {
-      stats.temperature.values.push(data.temperature);
+    if (temperature !== undefined && temperature !== null) {
+      stats.temperature.values.push(temperature);
     }
-    if (data.ph !== undefined && data.ph !== null) {
-      stats.ph.values.push(data.ph);
+    if (ph !== undefined && ph !== null) {
+      stats.ph.values.push(ph);
+    }
+    if (nitrogen !== undefined && nitrogen !== null) {
+      stats.npk.nitrogen.values.push(nitrogen);
+    }
+    if (phosphorus !== undefined && phosphorus !== null) {
+      stats.npk.phosphorus.values.push(phosphorus);
+    }
+    if (potassium !== undefined && potassium !== null) {
+      stats.npk.potassium.values.push(potassium);
     }
   });
 
@@ -145,6 +189,18 @@ function calculateStatistics(sensorData) {
     delete stats[param].values; // Remover array de valores
   });
 
+  // Calcular estatísticas para NPK
+  ['nitrogen', 'phosphorus', 'potassium'].forEach(nutrient => {
+    const values = stats.npk[nutrient].values;
+    if (values.length > 0) {
+      stats.npk[nutrient].min = Math.min(...values);
+      stats.npk[nutrient].max = Math.max(...values);
+      stats.npk[nutrient].avg = values.reduce((a, b) => a + b, 0) / values.length;
+      stats.npk[nutrient].count = values.length;
+    }
+    delete stats.npk[nutrient].values; // Remover array de valores
+  });
+
   return stats;
 }
 
@@ -158,22 +214,58 @@ function groupByMonth(sensorData) {
     humidity: { values: [], avg: 0, min: 0, max: 0 },
     temperature: { values: [], avg: 0, min: 0, max: 0 },
     ph: { values: [], avg: 0, min: 0, max: 0 },
+    npk: {
+      nitrogen: { values: [], avg: 0, min: 0, max: 0 },
+      phosphorus: { values: [], avg: 0, min: 0, max: 0 },
+      potassium: { values: [], avg: 0, min: 0, max: 0 }
+    },
     dataPoints: 0
   }));
 
   // Agrupar dados por mês
   sensorData.forEach(data => {
-    const month = new Date(data.timestamp).getMonth();
+    // Usar reading_timestamp ao invés de timestamp
+    const timestamp = data.reading_timestamp || data.timestamp;
+    if (!timestamp) {
+      console.warn('⚠️ Dado sem timestamp:', data);
+      return;
+    }
+
+    const month = new Date(timestamp).getMonth();
+
+    // Validar se o mês é válido (0-11)
+    if (month < 0 || month > 11) {
+      console.warn('⚠️ Mês inválido:', month, 'para timestamp:', timestamp);
+      return;
+    }
+
     monthlyData[month].dataPoints++;
 
-    if (data.soil_moisture !== undefined && data.soil_moisture !== null) {
-      monthlyData[month].humidity.values.push(data.soil_moisture);
+    // Acessar valores aninhados em sensor_data
+    const soilMoisture = data.sensor_data?.soil_moisture?.value;
+    const temperature = data.sensor_data?.temperature?.value;
+    const ph = data.sensor_data?.ph?.value;
+    const nitrogen = data.sensor_data?.npk?.nitrogen;
+    const phosphorus = data.sensor_data?.npk?.phosphorus;
+    const potassium = data.sensor_data?.npk?.potassium;
+
+    if (soilMoisture !== undefined && soilMoisture !== null) {
+      monthlyData[month].humidity.values.push(soilMoisture);
     }
-    if (data.temperature !== undefined && data.temperature !== null) {
-      monthlyData[month].temperature.values.push(data.temperature);
+    if (temperature !== undefined && temperature !== null) {
+      monthlyData[month].temperature.values.push(temperature);
     }
-    if (data.ph !== undefined && data.ph !== null) {
-      monthlyData[month].ph.values.push(data.ph);
+    if (ph !== undefined && ph !== null) {
+      monthlyData[month].ph.values.push(ph);
+    }
+    if (nitrogen !== undefined && nitrogen !== null) {
+      monthlyData[month].npk.nitrogen.values.push(nitrogen);
+    }
+    if (phosphorus !== undefined && phosphorus !== null) {
+      monthlyData[month].npk.phosphorus.values.push(phosphorus);
+    }
+    if (potassium !== undefined && potassium !== null) {
+      monthlyData[month].npk.potassium.values.push(potassium);
     }
   });
 
@@ -187,6 +279,17 @@ function groupByMonth(sensorData) {
         monthData[param].max = Math.max(...values);
       }
       delete monthData[param].values; // Remover array de valores
+    });
+
+    // Calcular estatísticas mensais para NPK
+    ['nitrogen', 'phosphorus', 'potassium'].forEach(nutrient => {
+      const values = monthData.npk[nutrient].values;
+      if (values.length > 0) {
+        monthData.npk[nutrient].avg = values.reduce((a, b) => a + b, 0) / values.length;
+        monthData.npk[nutrient].min = Math.min(...values);
+        monthData.npk[nutrient].max = Math.max(...values);
+      }
+      delete monthData.npk[nutrient].values; // Remover array de valores
     });
   });
 

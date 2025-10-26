@@ -281,8 +281,8 @@ const Dashboard: React.FC = () => {
 
   // Iniciar irrigação
   const handleStartIrrigation = async () => {
-    if (!selectedSectorId) {
-      alert('Por favor, selecione um setor primeiro');
+    if (!activeSector?._id) {
+      alert('Por favor, selecione um setor primeiro. Clique no ícone de lápis no header para selecionar um ambiente e setor.');
       return;
     }
 
@@ -295,7 +295,7 @@ const Dashboard: React.FC = () => {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          sector_id: selectedSectorId,
+          sector_id: activeSector._id,
           plannedDuration: irrigationDuration
         })
       });
@@ -382,32 +382,43 @@ const Dashboard: React.FC = () => {
 
   // Buscar dados do relatório anual
   const handleFetchReport = async () => {
-    if (!selectedSectorId) {
-      alert('Por favor, selecione um setor primeiro');
+    if (!activeSector?._id) {
+      alert('Por favor, selecione um setor primeiro. Clique no ícone de lápis no header para selecionar um ambiente e setor.');
       return;
     }
+
+    console.log('📊 Buscando relatório:', {
+      sectorId: activeSector._id,
+      sectorName: activeSector.name,
+      year: reportYear
+    });
 
     setLoadingReport(true);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(
-        `http://localhost:3000/api/v1/reports/annual/${selectedSectorId}/${reportYear}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
+      const url = `http://localhost:3000/api/v1/reports/annual/${activeSector._id}/${reportYear}`;
+      console.log('🌐 URL da requisição:', url);
+
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
-      );
+      });
+
+      console.log('📡 Response status:', response.status);
 
       if (response.ok) {
         const data = await response.json();
+        console.log('✅ Dados recebidos:', data);
         setReportData(data);
       } else {
         const error = await response.json();
+        console.error('❌ Erro na resposta:', error);
         alert(error.message || 'Erro ao buscar relatório');
       }
     } catch (error: any) {
+      console.error('❌ Erro na requisição:', error);
       alert(error.message || 'Erro ao buscar relatório');
     } finally {
       setLoadingReport(false);
@@ -454,32 +465,66 @@ const Dashboard: React.FC = () => {
       doc.text('Estatísticas Gerais', 20, yPos);
       yPos += 5;
 
+      // Preparar dados da tabela de estatísticas gerais
+      const statsTableBody = [
+        [
+          'Umidade (%)',
+          reportData.statistics.humidity.min.toFixed(1),
+          reportData.statistics.humidity.max.toFixed(1),
+          reportData.statistics.humidity.avg.toFixed(1),
+          reportData.statistics.humidity.count
+        ],
+        [
+          'Temperatura (°C)',
+          reportData.statistics.temperature.min.toFixed(1),
+          reportData.statistics.temperature.max.toFixed(1),
+          reportData.statistics.temperature.avg.toFixed(1),
+          reportData.statistics.temperature.count
+        ],
+        [
+          'pH',
+          reportData.statistics.ph.min.toFixed(2),
+          reportData.statistics.ph.max.toFixed(2),
+          reportData.statistics.ph.avg.toFixed(2),
+          reportData.statistics.ph.count
+        ]
+      ];
+
+      // Adicionar NPK se houver dados
+      if (reportData.statistics.npk) {
+        if (reportData.statistics.npk.nitrogen.count > 0) {
+          statsTableBody.push([
+            'Nitrogênio (mg/kg)',
+            reportData.statistics.npk.nitrogen.min.toFixed(1),
+            reportData.statistics.npk.nitrogen.max.toFixed(1),
+            reportData.statistics.npk.nitrogen.avg.toFixed(1),
+            reportData.statistics.npk.nitrogen.count
+          ]);
+        }
+        if (reportData.statistics.npk.phosphorus.count > 0) {
+          statsTableBody.push([
+            'Fósforo (mg/kg)',
+            reportData.statistics.npk.phosphorus.min.toFixed(1),
+            reportData.statistics.npk.phosphorus.max.toFixed(1),
+            reportData.statistics.npk.phosphorus.avg.toFixed(1),
+            reportData.statistics.npk.phosphorus.count
+          ]);
+        }
+        if (reportData.statistics.npk.potassium.count > 0) {
+          statsTableBody.push([
+            'Potássio (mg/kg)',
+            reportData.statistics.npk.potassium.min.toFixed(1),
+            reportData.statistics.npk.potassium.max.toFixed(1),
+            reportData.statistics.npk.potassium.avg.toFixed(1),
+            reportData.statistics.npk.potassium.count
+          ]);
+        }
+      }
+
       autoTable(doc, {
         startY: yPos,
         head: [['Parâmetro', 'Mínimo', 'Máximo', 'Média', 'Leituras']],
-        body: [
-          [
-            'Umidade (%)',
-            reportData.statistics.humidity.min.toFixed(1),
-            reportData.statistics.humidity.max.toFixed(1),
-            reportData.statistics.humidity.avg.toFixed(1),
-            reportData.statistics.humidity.count
-          ],
-          [
-            'Temperatura (°C)',
-            reportData.statistics.temperature.min.toFixed(1),
-            reportData.statistics.temperature.max.toFixed(1),
-            reportData.statistics.temperature.avg.toFixed(1),
-            reportData.statistics.temperature.count
-          ],
-          [
-            'pH',
-            reportData.statistics.ph.min.toFixed(2),
-            reportData.statistics.ph.max.toFixed(2),
-            reportData.statistics.ph.avg.toFixed(2),
-            reportData.statistics.ph.count
-          ]
-        ],
+        body: statsTableBody,
         theme: 'grid',
         headStyles: { fillColor: [37, 99, 235] }
       });
@@ -513,8 +558,10 @@ const Dashboard: React.FC = () => {
       doc.addPage();
       yPos = 20;
 
+      // ========== UMIDADE ==========
       doc.setFontSize(14);
-      doc.text('Dados Mensais - Umidade (%)', 20, yPos);
+      doc.setTextColor(59, 130, 246); // Azul
+      doc.text('Dados Mensais - Umidade do Solo (%)', 20, yPos);
       yPos += 5;
 
       autoTable(doc, {
@@ -528,8 +575,153 @@ const Dashboard: React.FC = () => {
           m.dataPoints
         ]),
         theme: 'grid',
-        headStyles: { fillColor: [37, 99, 235] }
+        headStyles: { fillColor: [59, 130, 246] }
       });
+
+      yPos = (doc as any).lastAutoTable.finalY + 15;
+
+      // ========== TEMPERATURA ==========
+      doc.setFontSize(14);
+      doc.setTextColor(251, 146, 60); // Laranja
+      doc.text('Dados Mensais - Temperatura (°C)', 20, yPos);
+      yPos += 5;
+
+      autoTable(doc, {
+        startY: yPos,
+        head: [['Mês', 'Média', 'Mínimo', 'Máximo', 'Leituras']],
+        body: reportData.monthlyData.map((m: any) => [
+          m.monthName,
+          m.temperature.avg > 0 ? m.temperature.avg.toFixed(1) : '-',
+          m.temperature.min > 0 ? m.temperature.min.toFixed(1) : '-',
+          m.temperature.max > 0 ? m.temperature.max.toFixed(1) : '-',
+          m.dataPoints
+        ]),
+        theme: 'grid',
+        headStyles: { fillColor: [251, 146, 60] }
+      });
+
+      yPos = (doc as any).lastAutoTable.finalY + 15;
+
+      // Verificar se precisa de nova página
+      if (yPos > 220) {
+        doc.addPage();
+        yPos = 20;
+      }
+
+      // ========== pH ==========
+      doc.setFontSize(14);
+      doc.setTextColor(34, 197, 94); // Verde
+      doc.text('Dados Mensais - pH do Solo', 20, yPos);
+      yPos += 5;
+
+      autoTable(doc, {
+        startY: yPos,
+        head: [['Mês', 'Média', 'Mínimo', 'Máximo', 'Leituras']],
+        body: reportData.monthlyData.map((m: any) => [
+          m.monthName,
+          m.ph.avg > 0 ? m.ph.avg.toFixed(2) : '-',
+          m.ph.min > 0 ? m.ph.min.toFixed(2) : '-',
+          m.ph.max > 0 ? m.ph.max.toFixed(2) : '-',
+          m.dataPoints
+        ]),
+        theme: 'grid',
+        headStyles: { fillColor: [34, 197, 94] }
+      });
+
+      // ========== NPK (se houver dados) ==========
+      const hasNPKData = reportData.monthlyData.some((m: any) =>
+        m.npk && (
+          (m.npk.nitrogen && m.npk.nitrogen.avg > 0) ||
+          (m.npk.phosphorus && m.npk.phosphorus.avg > 0) ||
+          (m.npk.potassium && m.npk.potassium.avg > 0)
+        )
+      );
+
+      if (hasNPKData) {
+        yPos = (doc as any).lastAutoTable.finalY + 15;
+
+        // Verificar se precisa de nova página
+        if (yPos > 220) {
+          doc.addPage();
+          yPos = 20;
+        }
+
+        // Nitrogênio
+        doc.setFontSize(14);
+        doc.setTextColor(168, 85, 247); // Roxo
+        doc.text('Dados Mensais - Nitrogênio (mg/kg)', 20, yPos);
+        yPos += 5;
+
+        autoTable(doc, {
+          startY: yPos,
+          head: [['Mês', 'Média', 'Mínimo', 'Máximo', 'Leituras']],
+          body: reportData.monthlyData.map((m: any) => [
+            m.monthName,
+            m.npk?.nitrogen?.avg > 0 ? m.npk.nitrogen.avg.toFixed(1) : '-',
+            m.npk?.nitrogen?.min > 0 ? m.npk.nitrogen.min.toFixed(1) : '-',
+            m.npk?.nitrogen?.max > 0 ? m.npk.nitrogen.max.toFixed(1) : '-',
+            m.dataPoints
+          ]),
+          theme: 'grid',
+          headStyles: { fillColor: [168, 85, 247] }
+        });
+
+        yPos = (doc as any).lastAutoTable.finalY + 15;
+
+        // Verificar se precisa de nova página
+        if (yPos > 220) {
+          doc.addPage();
+          yPos = 20;
+        }
+
+        // Fósforo
+        doc.setFontSize(14);
+        doc.setTextColor(236, 72, 153); // Rosa
+        doc.text('Dados Mensais - Fósforo (mg/kg)', 20, yPos);
+        yPos += 5;
+
+        autoTable(doc, {
+          startY: yPos,
+          head: [['Mês', 'Média', 'Mínimo', 'Máximo', 'Leituras']],
+          body: reportData.monthlyData.map((m: any) => [
+            m.monthName,
+            m.npk?.phosphorus?.avg > 0 ? m.npk.phosphorus.avg.toFixed(1) : '-',
+            m.npk?.phosphorus?.min > 0 ? m.npk.phosphorus.min.toFixed(1) : '-',
+            m.npk?.phosphorus?.max > 0 ? m.npk.phosphorus.max.toFixed(1) : '-',
+            m.dataPoints
+          ]),
+          theme: 'grid',
+          headStyles: { fillColor: [236, 72, 153] }
+        });
+
+        yPos = (doc as any).lastAutoTable.finalY + 15;
+
+        // Verificar se precisa de nova página
+        if (yPos > 220) {
+          doc.addPage();
+          yPos = 20;
+        }
+
+        // Potássio
+        doc.setFontSize(14);
+        doc.setTextColor(245, 158, 11); // Amarelo/Dourado
+        doc.text('Dados Mensais - Potássio (mg/kg)', 20, yPos);
+        yPos += 5;
+
+        autoTable(doc, {
+          startY: yPos,
+          head: [['Mês', 'Média', 'Mínimo', 'Máximo', 'Leituras']],
+          body: reportData.monthlyData.map((m: any) => [
+            m.monthName,
+            m.npk?.potassium?.avg > 0 ? m.npk.potassium.avg.toFixed(1) : '-',
+            m.npk?.potassium?.min > 0 ? m.npk.potassium.min.toFixed(1) : '-',
+            m.npk?.potassium?.max > 0 ? m.npk.potassium.max.toFixed(1) : '-',
+            m.dataPoints
+          ]),
+          theme: 'grid',
+          headStyles: { fillColor: [245, 158, 11] }
+        });
+      }
 
       // Salvar PDF
       doc.save(`WaterySoil_Relatorio_${reportData.sector.name}_${reportData.year}.pdf`);
@@ -781,13 +973,19 @@ const Dashboard: React.FC = () => {
 
   const loadActiveLocation = async () => {
     try {
-      // Por enquanto, vamos carregar o primeiro ambiente e setor disponível
+      // Carregar todos os ambientes disponíveis
       const environments = await environmentService.getEnvironments();
+      setAvailableEnvironments(environments);
+
       if (environments && environments.length > 0) {
         const firstEnv = environments[0];
         setActiveEnvironment({ _id: firstEnv._id, name: firstEnv.name });
+        setSelectedEnvironmentId(firstEnv._id);
 
+        // Carregar todos os setores do ambiente
         const sectors = await sectorService.getSectors(firstEnv._id);
+        setAvailableSectors(sectors);
+
         if (sectors && sectors.length > 0) {
           const firstSector = sectors[0];
           // Extrai o ID do environment_id, seja ele string ou objeto
@@ -801,6 +999,7 @@ const Dashboard: React.FC = () => {
             name: firstSector.name,
             environment_id: environmentId,
           });
+          setSelectedSectorId(firstSector._id);
         }
       }
     } catch (error) {
@@ -1788,9 +1987,14 @@ const Dashboard: React.FC = () => {
                 </label>
                 <div className="px-4 py-3 bg-gray-50 rounded-lg border border-gray-200">
                   <p className="text-gray-900 font-medium">
-                    {availableSectors.find(s => s._id === selectedSectorId)?.name || 'Nenhum setor selecionado'}
+                    {activeSector?.name || 'Nenhum setor selecionado'}
                   </p>
                 </div>
+                {!activeSector && (
+                  <p className="text-sm text-amber-600 mt-2">
+                    ⚠️ Clique no ícone de lápis no header para selecionar um setor
+                  </p>
+                )}
               </div>
 
               <div>
@@ -1826,7 +2030,7 @@ const Dashboard: React.FC = () => {
               </button>
               <button
                 onClick={handleStartIrrigation}
-                disabled={!selectedSectorId}
+                disabled={!activeSector?._id}
                 className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Iniciar
@@ -1853,7 +2057,7 @@ const Dashboard: React.FC = () => {
                   </label>
                   <div className="px-4 py-3 bg-gray-50 rounded-lg border border-gray-200">
                     <p className="text-gray-900 font-medium">
-                      {availableSectors.find(s => s._id === selectedSectorId)?.name || 'Nenhum setor selecionado'}
+                      {activeSector?.name || 'Nenhum setor selecionado'}
                     </p>
                   </div>
                 </div>
@@ -1882,7 +2086,7 @@ const Dashboard: React.FC = () => {
                   </button>
                   <button
                     onClick={handleFetchReport}
-                    disabled={!selectedSectorId || loadingReport}
+                    disabled={!activeSector?._id || loadingReport}
                     className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {loadingReport ? 'Carregando...' : 'Buscar Dados'}
