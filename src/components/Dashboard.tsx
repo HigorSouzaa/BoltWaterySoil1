@@ -40,7 +40,7 @@ import {
   getStatusColor,
   getStatusTip,
   type SoilType,
-  type ParameterStatus
+  type ParameterStatus,
 } from "../services/parameterClassification";
 
 interface UserPreferences {
@@ -76,11 +76,7 @@ interface SensorData {
 const Dashboard: React.FC = () => {
   const navigate = useNavigate();
   const [currentView, setCurrentView] = useState<
-    | "dashboard"
-    | "environments"
-    | "modules"
-    | "maintenance"
-    | "settings"
+    "dashboard" | "environments" | "modules" | "maintenance" | "settings"
   >("dashboard");
   const [activeEnvironment, setActiveEnvironment] =
     useState<DashboardEnvironment | null>(null);
@@ -104,10 +100,10 @@ const Dashboard: React.FC = () => {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [showCreateAlertModal, setShowCreateAlertModal] = useState(false);
   const [alertForm, setAlertForm] = useState<CreateAlertData>({
-    type: 'info',
-    message: '',
-    sector_id: '',
-    source: 'manual'
+    type: "info",
+    message: "",
+    sector_id: "",
+    source: "manual",
   });
   const [loadingAlerts, setLoadingAlerts] = useState(false);
   const [showAlertSettingsModal, setShowAlertSettingsModal] = useState(false);
@@ -116,7 +112,7 @@ const Dashboard: React.FC = () => {
     temperature: { min: 15, max: 35, enabled: false },
     ph: { min: 5.5, max: 7.5, enabled: false },
     emailNotifications: true,
-    systemNotifications: true
+    systemNotifications: true,
   });
   const [activeIrrigation, setActiveIrrigation] = useState<any>(null);
   const [irrigationTimer, setIrrigationTimer] = useState<number>(0);
@@ -133,19 +129,23 @@ const Dashboard: React.FC = () => {
   const loadAlerts = async () => {
     try {
       setLoadingAlerts(true);
-      const alertsData = await alertService.getAlerts({ status: 'active', limit: 5 });
+      const alertsData = await alertService.getAlerts({
+        status: "active",
+        limit: 5,
+      });
       setAlerts(alertsData);
 
       // Contar alertas automáticos não lidos (criados nas últimas 24h)
-      const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
-      const recentAutoAlerts = alertsData.filter((alert: Alert) =>
-        alert.isAutomatic &&
-        alert.status === 'active' &&
-        new Date(alert.createdAt).getTime() > oneDayAgo
+      const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
+      const recentAutoAlerts = alertsData.filter(
+        (alert: Alert) =>
+          alert.isAutomatic &&
+          alert.status === "active" &&
+          new Date(alert.createdAt).getTime() > oneDayAgo
       );
       setUnreadNotifications(recentAutoAlerts.length);
     } catch (error) {
-      console.error('Erro ao carregar alertas:', error);
+      console.error("Erro ao carregar alertas:", error);
     } finally {
       setLoadingAlerts(false);
     }
@@ -154,7 +154,7 @@ const Dashboard: React.FC = () => {
   // Criar novo alerta
   const handleCreateAlert = async () => {
     if (!alertForm.message.trim()) {
-      alert('Por favor, insira uma mensagem para o alerta');
+      alert("Por favor, insira uma mensagem para o alerta");
       return;
     }
 
@@ -162,14 +162,14 @@ const Dashboard: React.FC = () => {
       await alertService.createAlert(alertForm);
       setShowCreateAlertModal(false);
       setAlertForm({
-        type: 'info',
-        message: '',
-        sector_id: '',
-        source: 'manual'
+        type: "info",
+        message: "",
+        sector_id: "",
+        source: "manual",
       });
       loadAlerts(); // Recarregar alertas
     } catch (error: any) {
-      alert(error.message || 'Erro ao criar alerta');
+      alert(error.message || "Erro ao criar alerta");
     }
   };
 
@@ -179,13 +179,13 @@ const Dashboard: React.FC = () => {
       await alertService.resolveAlert(alertId);
       loadAlerts(); // Recarregar alertas
     } catch (error: any) {
-      alert(error.message || 'Erro ao resolver alerta');
+      alert(error.message || "Erro ao resolver alerta");
     }
   };
 
   // Deletar alerta
   const handleDeleteAlert = async (alertId: string) => {
-    if (!confirm('Tem certeza que deseja deletar este alerta?')) {
+    if (!confirm("Tem certeza que deseja deletar este alerta?")) {
       return;
     }
 
@@ -193,7 +193,7 @@ const Dashboard: React.FC = () => {
       await alertService.deleteAlert(alertId);
       loadAlerts(); // Recarregar alertas
     } catch (error: any) {
-      alert(error.message || 'Erro ao deletar alerta');
+      alert(error.message || "Erro ao deletar alerta");
     }
   };
 
@@ -208,65 +208,74 @@ const Dashboard: React.FC = () => {
 
     if (diffMins < 60) return `${diffMins}min atrás`;
     if (diffHours < 24) return `${diffHours}h atrás`;
-    if (diffDays === 1) return '1 dia atrás';
+    if (diffDays === 1) return "1 dia atrás";
     return `${diffDays} dias atrás`;
   };
 
   // Carregar configurações de alertas
   const loadAlertSettings = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:3000/api/v1/users/alert-settings', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        "http://localhost:3000/api/v1/users/alert-settings",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
         }
-      });
+      );
 
       if (response.ok) {
         const data = await response.json();
         setAlertSettings(data.alertSettings);
       }
     } catch (error) {
-      console.error('Erro ao carregar configurações de alertas:', error);
+      console.error("Erro ao carregar configurações de alertas:", error);
     }
   };
 
   // Salvar configurações de alertas
   const handleSaveAlertSettings = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:3000/api/v1/users/alert-settings', {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ alertSettings })
-      });
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        "http://localhost:3000/api/v1/users/alert-settings",
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ alertSettings }),
+        }
+      );
 
       if (response.ok) {
-        alert('Configurações de alertas salvas com sucesso!');
+        alert("Configurações de alertas salvas com sucesso!");
         setShowAlertSettingsModal(false);
       } else {
         const error = await response.json();
-        alert(error.message || 'Erro ao salvar configurações');
+        alert(error.message || "Erro ao salvar configurações");
       }
     } catch (error: any) {
-      alert(error.message || 'Erro ao salvar configurações');
+      alert(error.message || "Erro ao salvar configurações");
     }
   };
 
   // Carregar irrigação ativa
   const loadActiveIrrigation = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:3000/api/v1/irrigation/active', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        "http://localhost:3000/api/v1/irrigation/active",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
         }
-      });
+      );
 
       if (response.ok) {
         const data = await response.json();
@@ -275,30 +284,35 @@ const Dashboard: React.FC = () => {
         }
       }
     } catch (error) {
-      console.error('Erro ao carregar irrigação ativa:', error);
+      console.error("Erro ao carregar irrigação ativa:", error);
     }
   };
 
   // Iniciar irrigação
   const handleStartIrrigation = async () => {
     if (!activeSector?._id) {
-      alert('Por favor, selecione um setor primeiro. Clique no ícone de lápis no header para selecionar um ambiente e setor.');
+      alert(
+        "Por favor, selecione um setor primeiro. Clique no ícone de lápis no header para selecionar um ambiente e setor."
+      );
       return;
     }
 
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:3000/api/v1/irrigation/start', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          sector_id: activeSector._id,
-          plannedDuration: irrigationDuration
-        })
-      });
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        "http://localhost:3000/api/v1/irrigation/start",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            sector_id: activeSector._id,
+            plannedDuration: irrigationDuration,
+          }),
+        }
+      );
 
       if (response.ok) {
         const data = await response.json();
@@ -307,10 +321,10 @@ const Dashboard: React.FC = () => {
         setIrrigationTimer(0);
       } else {
         const error = await response.json();
-        alert(error.message || 'Erro ao iniciar irrigação');
+        alert(error.message || "Erro ao iniciar irrigação");
       }
     } catch (error: any) {
-      alert(error.message || 'Erro ao iniciar irrigação');
+      alert(error.message || "Erro ao iniciar irrigação");
     }
   };
 
@@ -319,28 +333,31 @@ const Dashboard: React.FC = () => {
     if (!activeIrrigation) return;
 
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:3000/api/v1/irrigation/stop', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          irrigation_id: activeIrrigation._id
-        })
-      });
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        "http://localhost:3000/api/v1/irrigation/stop",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            irrigation_id: activeIrrigation._id,
+          }),
+        }
+      );
 
       if (response.ok) {
         setActiveIrrigation(null);
         setIrrigationTimer(0);
-        alert('Irrigação finalizada com sucesso!');
+        alert("Irrigação finalizada com sucesso!");
       } else {
         const error = await response.json();
-        alert(error.message || 'Erro ao parar irrigação');
+        alert(error.message || "Erro ao parar irrigação");
       }
     } catch (error: any) {
-      alert(error.message || 'Erro ao parar irrigação');
+      alert(error.message || "Erro ao parar irrigação");
     }
   };
 
@@ -349,27 +366,30 @@ const Dashboard: React.FC = () => {
     if (!activeIrrigation) return;
 
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:3000/api/v1/irrigation/cancel', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          irrigation_id: activeIrrigation._id
-        })
-      });
+      const token = localStorage.getItem("token");
+      const response = await fetch(
+        "http://localhost:3000/api/v1/irrigation/cancel",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            irrigation_id: activeIrrigation._id,
+          }),
+        }
+      );
 
       if (response.ok) {
         setActiveIrrigation(null);
         setIrrigationTimer(0);
       } else {
         const error = await response.json();
-        alert(error.message || 'Erro ao cancelar irrigação');
+        alert(error.message || "Erro ao cancelar irrigação");
       }
     } catch (error: any) {
-      alert(error.message || 'Erro ao cancelar irrigação');
+      alert(error.message || "Erro ao cancelar irrigação");
     }
   };
 
@@ -377,49 +397,51 @@ const Dashboard: React.FC = () => {
   const formatIrrigationTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
   // Buscar dados do relatório anual
   const handleFetchReport = async () => {
     if (!activeSector?._id) {
-      alert('Por favor, selecione um setor primeiro. Clique no ícone de lápis no header para selecionar um ambiente e setor.');
+      alert(
+        "Por favor, selecione um setor primeiro. Clique no ícone de lápis no header para selecionar um ambiente e setor."
+      );
       return;
     }
 
-    console.log('📊 Buscando relatório:', {
+    console.log("📊 Buscando relatório:", {
       sectorId: activeSector._id,
       sectorName: activeSector.name,
-      year: reportYear
+      year: reportYear,
     });
 
     setLoadingReport(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = localStorage.getItem("token");
       const url = `http://localhost:3000/api/v1/reports/annual/${activeSector._id}/${reportYear}`;
-      console.log('🌐 URL da requisição:', url);
+      console.log("🌐 URL da requisição:", url);
 
       const response = await fetch(url, {
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
       });
 
-      console.log('📡 Response status:', response.status);
+      console.log("📡 Response status:", response.status);
 
       if (response.ok) {
         const data = await response.json();
-        console.log('✅ Dados recebidos:', data);
+        console.log("✅ Dados recebidos:", data);
         setReportData(data);
       } else {
         const error = await response.json();
-        console.error('❌ Erro na resposta:', error);
-        alert(error.message || 'Erro ao buscar relatório');
+        console.error("❌ Erro na resposta:", error);
+        alert(error.message || "Erro ao buscar relatório");
       }
     } catch (error: any) {
-      console.error('❌ Erro na requisição:', error);
-      alert(error.message || 'Erro ao buscar relatório');
+      console.error("❌ Erro na requisição:", error);
+      alert(error.message || "Erro ao buscar relatório");
     } finally {
       setLoadingReport(false);
     }
@@ -430,8 +452,8 @@ const Dashboard: React.FC = () => {
     if (!reportData) return;
 
     try {
-      const { jsPDF } = await import('jspdf');
-      const autoTable = (await import('jspdf-autotable')).default;
+      const { jsPDF } = await import("jspdf");
+      const autoTable = (await import("jspdf-autotable")).default;
 
       const doc = new jsPDF();
       let yPos = 20;
@@ -439,7 +461,7 @@ const Dashboard: React.FC = () => {
       // Título
       doc.setFontSize(20);
       doc.setTextColor(37, 99, 235); // Azul
-      doc.text('WaterySoil', 20, yPos);
+      doc.text("WaterySoil", 20, yPos);
 
       yPos += 10;
       doc.setFontSize(16);
@@ -452,7 +474,13 @@ const Dashboard: React.FC = () => {
       doc.text(`Setor: ${reportData.sector.name}`, 20, yPos);
 
       yPos += 8;
-      doc.text(`Período: ${new Date(reportData.period.start).toLocaleDateString('pt-BR')} - ${new Date(reportData.period.end).toLocaleDateString('pt-BR')}`, 20, yPos);
+      doc.text(
+        `Período: ${new Date(reportData.period.start).toLocaleDateString(
+          "pt-BR"
+        )} - ${new Date(reportData.period.end).toLocaleDateString("pt-BR")}`,
+        20,
+        yPos
+      );
 
       yPos += 8;
       doc.text(`Total de Leituras: ${reportData.dataPoints}`, 20, yPos);
@@ -462,94 +490,94 @@ const Dashboard: React.FC = () => {
       // Estatísticas Gerais
       doc.setFontSize(14);
       doc.setTextColor(0, 0, 0);
-      doc.text('Estatísticas Gerais', 20, yPos);
+      doc.text("Estatísticas Gerais", 20, yPos);
       yPos += 5;
 
       // Preparar dados da tabela de estatísticas gerais
       const statsTableBody = [
         [
-          'Umidade (%)',
+          "Umidade (%)",
           reportData.statistics.humidity.min.toFixed(1),
           reportData.statistics.humidity.max.toFixed(1),
           reportData.statistics.humidity.avg.toFixed(1),
-          reportData.statistics.humidity.count
+          reportData.statistics.humidity.count,
         ],
         [
-          'Temperatura (°C)',
+          "Temperatura (°C)",
           reportData.statistics.temperature.min.toFixed(1),
           reportData.statistics.temperature.max.toFixed(1),
           reportData.statistics.temperature.avg.toFixed(1),
-          reportData.statistics.temperature.count
+          reportData.statistics.temperature.count,
         ],
         [
-          'pH',
+          "pH",
           reportData.statistics.ph.min.toFixed(2),
           reportData.statistics.ph.max.toFixed(2),
           reportData.statistics.ph.avg.toFixed(2),
-          reportData.statistics.ph.count
-        ]
+          reportData.statistics.ph.count,
+        ],
       ];
 
       // Adicionar NPK se houver dados
       if (reportData.statistics.npk) {
         if (reportData.statistics.npk.nitrogen.count > 0) {
           statsTableBody.push([
-            'Nitrogênio (mg/kg)',
+            "Nitrogênio (mg/kg)",
             reportData.statistics.npk.nitrogen.min.toFixed(1),
             reportData.statistics.npk.nitrogen.max.toFixed(1),
             reportData.statistics.npk.nitrogen.avg.toFixed(1),
-            reportData.statistics.npk.nitrogen.count
+            reportData.statistics.npk.nitrogen.count,
           ]);
         }
         if (reportData.statistics.npk.phosphorus.count > 0) {
           statsTableBody.push([
-            'Fósforo (mg/kg)',
+            "Fósforo (mg/kg)",
             reportData.statistics.npk.phosphorus.min.toFixed(1),
             reportData.statistics.npk.phosphorus.max.toFixed(1),
             reportData.statistics.npk.phosphorus.avg.toFixed(1),
-            reportData.statistics.npk.phosphorus.count
+            reportData.statistics.npk.phosphorus.count,
           ]);
         }
         if (reportData.statistics.npk.potassium.count > 0) {
           statsTableBody.push([
-            'Potássio (mg/kg)',
+            "Potássio (mg/kg)",
             reportData.statistics.npk.potassium.min.toFixed(1),
             reportData.statistics.npk.potassium.max.toFixed(1),
             reportData.statistics.npk.potassium.avg.toFixed(1),
-            reportData.statistics.npk.potassium.count
+            reportData.statistics.npk.potassium.count,
           ]);
         }
       }
 
       autoTable(doc, {
         startY: yPos,
-        head: [['Parâmetro', 'Mínimo', 'Máximo', 'Média', 'Leituras']],
+        head: [["Parâmetro", "Mínimo", "Máximo", "Média", "Leituras"]],
         body: statsTableBody,
-        theme: 'grid',
-        headStyles: { fillColor: [37, 99, 235] }
+        theme: "grid",
+        headStyles: { fillColor: [37, 99, 235] },
       });
 
       yPos = (doc as any).lastAutoTable.finalY + 15;
 
       // Estatísticas de Alertas
       doc.setFontSize(14);
-      doc.text('Estatísticas de Alertas', 20, yPos);
+      doc.text("Estatísticas de Alertas", 20, yPos);
       yPos += 5;
 
       autoTable(doc, {
         startY: yPos,
-        head: [['Tipo', 'Quantidade']],
+        head: [["Tipo", "Quantidade"]],
         body: [
-          ['Total de Alertas', reportData.alerts.stats.total],
-          ['Alertas Resolvidos', reportData.alerts.stats.resolved],
-          ['Alertas Ativos', reportData.alerts.stats.active],
-          ['Info', reportData.alerts.stats.byType.info],
-          ['Avisos', reportData.alerts.stats.byType.warning],
-          ['Erros', reportData.alerts.stats.byType.error],
-          ['Sucesso', reportData.alerts.stats.byType.success]
+          ["Total de Alertas", reportData.alerts.stats.total],
+          ["Alertas Resolvidos", reportData.alerts.stats.resolved],
+          ["Alertas Ativos", reportData.alerts.stats.active],
+          ["Info", reportData.alerts.stats.byType.info],
+          ["Avisos", reportData.alerts.stats.byType.warning],
+          ["Erros", reportData.alerts.stats.byType.error],
+          ["Sucesso", reportData.alerts.stats.byType.success],
         ],
-        theme: 'grid',
-        headStyles: { fillColor: [37, 99, 235] }
+        theme: "grid",
+        headStyles: { fillColor: [37, 99, 235] },
       });
 
       yPos = (doc as any).lastAutoTable.finalY + 15;
@@ -561,21 +589,21 @@ const Dashboard: React.FC = () => {
       // ========== UMIDADE ==========
       doc.setFontSize(14);
       doc.setTextColor(59, 130, 246); // Azul
-      doc.text('Dados Mensais - Umidade do Solo (%)', 20, yPos);
+      doc.text("Dados Mensais - Umidade do Solo (%)", 20, yPos);
       yPos += 5;
 
       autoTable(doc, {
         startY: yPos,
-        head: [['Mês', 'Média', 'Mínimo', 'Máximo', 'Leituras']],
+        head: [["Mês", "Média", "Mínimo", "Máximo", "Leituras"]],
         body: reportData.monthlyData.map((m: any) => [
           m.monthName,
-          m.humidity.avg > 0 ? m.humidity.avg.toFixed(1) : '-',
-          m.humidity.min > 0 ? m.humidity.min.toFixed(1) : '-',
-          m.humidity.max > 0 ? m.humidity.max.toFixed(1) : '-',
-          m.dataPoints
+          m.humidity.avg > 0 ? m.humidity.avg.toFixed(1) : "-",
+          m.humidity.min > 0 ? m.humidity.min.toFixed(1) : "-",
+          m.humidity.max > 0 ? m.humidity.max.toFixed(1) : "-",
+          m.dataPoints,
         ]),
-        theme: 'grid',
-        headStyles: { fillColor: [59, 130, 246] }
+        theme: "grid",
+        headStyles: { fillColor: [59, 130, 246] },
       });
 
       yPos = (doc as any).lastAutoTable.finalY + 15;
@@ -583,21 +611,21 @@ const Dashboard: React.FC = () => {
       // ========== TEMPERATURA ==========
       doc.setFontSize(14);
       doc.setTextColor(251, 146, 60); // Laranja
-      doc.text('Dados Mensais - Temperatura (°C)', 20, yPos);
+      doc.text("Dados Mensais - Temperatura (°C)", 20, yPos);
       yPos += 5;
 
       autoTable(doc, {
         startY: yPos,
-        head: [['Mês', 'Média', 'Mínimo', 'Máximo', 'Leituras']],
+        head: [["Mês", "Média", "Mínimo", "Máximo", "Leituras"]],
         body: reportData.monthlyData.map((m: any) => [
           m.monthName,
-          m.temperature.avg > 0 ? m.temperature.avg.toFixed(1) : '-',
-          m.temperature.min > 0 ? m.temperature.min.toFixed(1) : '-',
-          m.temperature.max > 0 ? m.temperature.max.toFixed(1) : '-',
-          m.dataPoints
+          m.temperature.avg > 0 ? m.temperature.avg.toFixed(1) : "-",
+          m.temperature.min > 0 ? m.temperature.min.toFixed(1) : "-",
+          m.temperature.max > 0 ? m.temperature.max.toFixed(1) : "-",
+          m.dataPoints,
         ]),
-        theme: 'grid',
-        headStyles: { fillColor: [251, 146, 60] }
+        theme: "grid",
+        headStyles: { fillColor: [251, 146, 60] },
       });
 
       yPos = (doc as any).lastAutoTable.finalY + 15;
@@ -611,30 +639,30 @@ const Dashboard: React.FC = () => {
       // ========== pH ==========
       doc.setFontSize(14);
       doc.setTextColor(34, 197, 94); // Verde
-      doc.text('Dados Mensais - pH do Solo', 20, yPos);
+      doc.text("Dados Mensais - pH do Solo", 20, yPos);
       yPos += 5;
 
       autoTable(doc, {
         startY: yPos,
-        head: [['Mês', 'Média', 'Mínimo', 'Máximo', 'Leituras']],
+        head: [["Mês", "Média", "Mínimo", "Máximo", "Leituras"]],
         body: reportData.monthlyData.map((m: any) => [
           m.monthName,
-          m.ph.avg > 0 ? m.ph.avg.toFixed(2) : '-',
-          m.ph.min > 0 ? m.ph.min.toFixed(2) : '-',
-          m.ph.max > 0 ? m.ph.max.toFixed(2) : '-',
-          m.dataPoints
+          m.ph.avg > 0 ? m.ph.avg.toFixed(2) : "-",
+          m.ph.min > 0 ? m.ph.min.toFixed(2) : "-",
+          m.ph.max > 0 ? m.ph.max.toFixed(2) : "-",
+          m.dataPoints,
         ]),
-        theme: 'grid',
-        headStyles: { fillColor: [34, 197, 94] }
+        theme: "grid",
+        headStyles: { fillColor: [34, 197, 94] },
       });
 
       // ========== NPK (se houver dados) ==========
-      const hasNPKData = reportData.monthlyData.some((m: any) =>
-        m.npk && (
-          (m.npk.nitrogen && m.npk.nitrogen.avg > 0) ||
-          (m.npk.phosphorus && m.npk.phosphorus.avg > 0) ||
-          (m.npk.potassium && m.npk.potassium.avg > 0)
-        )
+      const hasNPKData = reportData.monthlyData.some(
+        (m: any) =>
+          m.npk &&
+          ((m.npk.nitrogen && m.npk.nitrogen.avg > 0) ||
+            (m.npk.phosphorus && m.npk.phosphorus.avg > 0) ||
+            (m.npk.potassium && m.npk.potassium.avg > 0))
       );
 
       if (hasNPKData) {
@@ -649,21 +677,21 @@ const Dashboard: React.FC = () => {
         // Nitrogênio
         doc.setFontSize(14);
         doc.setTextColor(168, 85, 247); // Roxo
-        doc.text('Dados Mensais - Nitrogênio (mg/kg)', 20, yPos);
+        doc.text("Dados Mensais - Nitrogênio (mg/kg)", 20, yPos);
         yPos += 5;
 
         autoTable(doc, {
           startY: yPos,
-          head: [['Mês', 'Média', 'Mínimo', 'Máximo', 'Leituras']],
+          head: [["Mês", "Média", "Mínimo", "Máximo", "Leituras"]],
           body: reportData.monthlyData.map((m: any) => [
             m.monthName,
-            m.npk?.nitrogen?.avg > 0 ? m.npk.nitrogen.avg.toFixed(1) : '-',
-            m.npk?.nitrogen?.min > 0 ? m.npk.nitrogen.min.toFixed(1) : '-',
-            m.npk?.nitrogen?.max > 0 ? m.npk.nitrogen.max.toFixed(1) : '-',
-            m.dataPoints
+            m.npk?.nitrogen?.avg > 0 ? m.npk.nitrogen.avg.toFixed(1) : "-",
+            m.npk?.nitrogen?.min > 0 ? m.npk.nitrogen.min.toFixed(1) : "-",
+            m.npk?.nitrogen?.max > 0 ? m.npk.nitrogen.max.toFixed(1) : "-",
+            m.dataPoints,
           ]),
-          theme: 'grid',
-          headStyles: { fillColor: [168, 85, 247] }
+          theme: "grid",
+          headStyles: { fillColor: [168, 85, 247] },
         });
 
         yPos = (doc as any).lastAutoTable.finalY + 15;
@@ -677,21 +705,21 @@ const Dashboard: React.FC = () => {
         // Fósforo
         doc.setFontSize(14);
         doc.setTextColor(236, 72, 153); // Rosa
-        doc.text('Dados Mensais - Fósforo (mg/kg)', 20, yPos);
+        doc.text("Dados Mensais - Fósforo (mg/kg)", 20, yPos);
         yPos += 5;
 
         autoTable(doc, {
           startY: yPos,
-          head: [['Mês', 'Média', 'Mínimo', 'Máximo', 'Leituras']],
+          head: [["Mês", "Média", "Mínimo", "Máximo", "Leituras"]],
           body: reportData.monthlyData.map((m: any) => [
             m.monthName,
-            m.npk?.phosphorus?.avg > 0 ? m.npk.phosphorus.avg.toFixed(1) : '-',
-            m.npk?.phosphorus?.min > 0 ? m.npk.phosphorus.min.toFixed(1) : '-',
-            m.npk?.phosphorus?.max > 0 ? m.npk.phosphorus.max.toFixed(1) : '-',
-            m.dataPoints
+            m.npk?.phosphorus?.avg > 0 ? m.npk.phosphorus.avg.toFixed(1) : "-",
+            m.npk?.phosphorus?.min > 0 ? m.npk.phosphorus.min.toFixed(1) : "-",
+            m.npk?.phosphorus?.max > 0 ? m.npk.phosphorus.max.toFixed(1) : "-",
+            m.dataPoints,
           ]),
-          theme: 'grid',
-          headStyles: { fillColor: [236, 72, 153] }
+          theme: "grid",
+          headStyles: { fillColor: [236, 72, 153] },
         });
 
         yPos = (doc as any).lastAutoTable.finalY + 15;
@@ -705,30 +733,32 @@ const Dashboard: React.FC = () => {
         // Potássio
         doc.setFontSize(14);
         doc.setTextColor(245, 158, 11); // Amarelo/Dourado
-        doc.text('Dados Mensais - Potássio (mg/kg)', 20, yPos);
+        doc.text("Dados Mensais - Potássio (mg/kg)", 20, yPos);
         yPos += 5;
 
         autoTable(doc, {
           startY: yPos,
-          head: [['Mês', 'Média', 'Mínimo', 'Máximo', 'Leituras']],
+          head: [["Mês", "Média", "Mínimo", "Máximo", "Leituras"]],
           body: reportData.monthlyData.map((m: any) => [
             m.monthName,
-            m.npk?.potassium?.avg > 0 ? m.npk.potassium.avg.toFixed(1) : '-',
-            m.npk?.potassium?.min > 0 ? m.npk.potassium.min.toFixed(1) : '-',
-            m.npk?.potassium?.max > 0 ? m.npk.potassium.max.toFixed(1) : '-',
-            m.dataPoints
+            m.npk?.potassium?.avg > 0 ? m.npk.potassium.avg.toFixed(1) : "-",
+            m.npk?.potassium?.min > 0 ? m.npk.potassium.min.toFixed(1) : "-",
+            m.npk?.potassium?.max > 0 ? m.npk.potassium.max.toFixed(1) : "-",
+            m.dataPoints,
           ]),
-          theme: 'grid',
-          headStyles: { fillColor: [245, 158, 11] }
+          theme: "grid",
+          headStyles: { fillColor: [245, 158, 11] },
         });
       }
 
       // Salvar PDF
-      doc.save(`WaterySoil_Relatorio_${reportData.sector.name}_${reportData.year}.pdf`);
-      alert('PDF gerado com sucesso!');
+      doc.save(
+        `WaterySoil_Relatorio_${reportData.sector.name}_${reportData.year}.pdf`
+      );
+      alert("PDF gerado com sucesso!");
     } catch (error: any) {
-      console.error('Erro ao gerar PDF:', error);
-      alert('Erro ao gerar PDF: ' + error.message);
+      console.error("Erro ao gerar PDF:", error);
+      alert("Erro ao gerar PDF: " + error.message);
     }
   };
 
@@ -743,13 +773,13 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
-      if (showNotifications && !target.closest('.notification-dropdown')) {
+      if (showNotifications && !target.closest(".notification-dropdown")) {
         setShowNotifications(false);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [showNotifications]);
 
   // Timer de irrigação
@@ -776,7 +806,10 @@ const Dashboard: React.FC = () => {
   }, [activeIrrigation]);
 
   // Função auxiliar para calcular tendência comparando valor atual com anterior
-  const calculateTrend = (currentValue: number, previousValue: number | undefined): "up" | "down" | "stable" => {
+  const calculateTrend = (
+    currentValue: number,
+    previousValue: number | undefined
+  ): "up" | "down" | "stable" => {
     if (previousValue === undefined) return "stable";
 
     const diff = currentValue - previousValue;
@@ -794,7 +827,7 @@ const Dashboard: React.FC = () => {
 
       modules.forEach((module) => {
         // Obter tipo de solo (prioriza módulo, depois setor, padrão loam)
-        const soilType: SoilType = (module.soil_type as SoilType) || 'loam';
+        const soilType: SoilType = (module.soil_type as SoilType) || "loam";
 
         // Determina o status baseado no status do módulo
         let status: "good" | "warning" | "critical" = "good";
@@ -804,8 +837,10 @@ const Dashboard: React.FC = () => {
 
         // Obter valores anteriores para calcular tendência
         const previousPh = (module.sensor_data?.ph as any)?.previous_value;
-        const previousMoisture = (module.sensor_data?.soil_moisture as any)?.previous_value;
-        const previousTemp = (module.sensor_data?.temperature as any)?.previous_value;
+        const previousMoisture = (module.sensor_data?.soil_moisture as any)
+          ?.previous_value;
+        const previousTemp = (module.sensor_data?.temperature as any)
+          ?.previous_value;
         const previousP = (module.sensor_data?.npk as any)?.previous_phosphorus;
         const previousK = (module.sensor_data?.npk as any)?.previous_potassium;
 
@@ -813,7 +848,7 @@ const Dashboard: React.FC = () => {
         if (module.sensor_data?.ph?.value !== undefined) {
           const phValue = module.sensor_data.ph.value;
           const parameterStatus = classifyPH(phValue);
-          const statusTip = getStatusTip('ph', parameterStatus);
+          const statusTip = getStatusTip("ph", parameterStatus);
           const trend = calculateTrend(phValue, previousPh);
 
           allSensors.push({
@@ -842,17 +877,22 @@ const Dashboard: React.FC = () => {
             const kStatus = classifyPotassium(potassium);
 
             // Status global: pior dos dois
-            const parameterStatus = pStatus === 'Ruim' || kStatus === 'Ruim' ? 'Ruim' :
-                                   pStatus === 'Bom' || kStatus === 'Bom' ? 'Bom' : 'Ideal';
+            const parameterStatus =
+              pStatus === "Ruim" || kStatus === "Ruim"
+                ? "Ruim"
+                : pStatus === "Bom" || kStatus === "Bom"
+                ? "Bom"
+                : "Ideal";
 
             // Mostrar faixas ideais de referência ao invés dos valores atuais
             const statusTip = `P: ideal (20-40 ppm), K: ideal (100-150 ppm)`;
 
             // Mostrar média para visualização
             const npkAvg = (phosphorus + potassium) / 2;
-            const previousNpkAvg = (previousP !== undefined && previousK !== undefined)
-              ? (previousP + previousK) / 2
-              : undefined;
+            const previousNpkAvg =
+              previousP !== undefined && previousK !== undefined
+                ? (previousP + previousK) / 2
+                : undefined;
             const trend = calculateTrend(npkAvg, previousNpkAvg);
 
             allSensors.push({
@@ -875,7 +915,7 @@ const Dashboard: React.FC = () => {
         if (module.sensor_data?.soil_moisture?.value !== undefined) {
           const moistureValue = module.sensor_data.soil_moisture.value;
           const parameterStatus = classifyVWC(moistureValue, soilType);
-          const statusTip = getStatusTip('moisture', parameterStatus, soilType);
+          const statusTip = getStatusTip("moisture", parameterStatus, soilType);
           const trend = calculateTrend(moistureValue, previousMoisture);
 
           allSensors.push({
@@ -897,7 +937,7 @@ const Dashboard: React.FC = () => {
         if (module.sensor_data?.temperature?.value !== undefined) {
           const tempValue = module.sensor_data.temperature.value;
           const parameterStatus = classifyTemperature(tempValue);
-          const statusTip = getStatusTip('temperature', parameterStatus);
+          const statusTip = getStatusTip("temperature", parameterStatus);
           const trend = calculateTrend(tempValue, previousTemp);
 
           allSensors.push({
@@ -1129,7 +1169,9 @@ const Dashboard: React.FC = () => {
               <div>
                 <p className="font-semibold">Irrigação Ativa</p>
                 <p className="text-sm text-blue-100">
-                  Setor: {activeIrrigation.sector_id?.name || 'N/A'} • Tempo: {formatIrrigationTime(irrigationTimer)} / {activeIrrigation.plannedDuration}min
+                  Setor: {activeIrrigation.sector_id?.name || "N/A"} • Tempo:{" "}
+                  {formatIrrigationTime(irrigationTimer)} /{" "}
+                  {activeIrrigation.plannedDuration}min
                 </p>
               </div>
             </div>
@@ -1144,7 +1186,11 @@ const Dashboard: React.FC = () => {
       )}
 
       {/* Header */}
-      <header className={`bg-white/80 backdrop-blur-md shadow-sm border-b border-gray-100 ${activeIrrigation ? 'mt-16' : ''}`}>
+      <header
+        className={`bg-white/80 backdrop-blur-md shadow-sm border-b border-gray-100 ${
+          activeIrrigation ? "mt-16" : ""
+        }`}
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-4">
@@ -1153,7 +1199,11 @@ const Dashboard: React.FC = () => {
                 onClick={() => setCurrentView("dashboard")}
                 className="flex items-center space-x-2 hover:opacity-80 transition-opacity"
               >
-                <Droplets className="h-8 w-8 text-blue-600" />
+                <img
+                  src="/images/logo.png"
+                  alt="ECO-SOIL PRO - Vista frontal em campo"
+                  className="w-10"
+                ></img>
                 <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">
                   WaterySoil
                 </span>
@@ -1208,7 +1258,7 @@ const Dashboard: React.FC = () => {
                   <Bell className="h-5 w-5" />
                   {unreadNotifications > 0 && (
                     <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                      {unreadNotifications > 9 ? '9+' : unreadNotifications}
+                      {unreadNotifications > 9 ? "9+" : unreadNotifications}
                     </span>
                   )}
                 </button>
@@ -1218,7 +1268,9 @@ const Dashboard: React.FC = () => {
                   <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-96 overflow-y-auto">
                     <div className="p-4 border-b border-gray-200">
                       <div className="flex items-center justify-between">
-                        <h3 className="font-semibold text-gray-900">Notificações</h3>
+                        <h3 className="font-semibold text-gray-900">
+                          Notificações
+                        </h3>
                         {unreadNotifications > 0 && (
                           <span className="text-xs bg-red-100 text-red-600 px-2 py-1 rounded-full">
                             {unreadNotifications} novas
@@ -1228,14 +1280,20 @@ const Dashboard: React.FC = () => {
                     </div>
 
                     <div className="divide-y divide-gray-100">
-                      {alerts.filter(alert => alert.isAutomatic && alert.status === 'active').length === 0 ? (
+                      {alerts.filter(
+                        (alert) =>
+                          alert.isAutomatic && alert.status === "active"
+                      ).length === 0 ? (
                         <div className="p-4 text-center text-gray-500">
                           <Bell className="h-8 w-8 mx-auto mb-2 text-gray-300" />
                           <p className="text-sm">Nenhuma notificação</p>
                         </div>
                       ) : (
                         alerts
-                          .filter(alert => alert.isAutomatic && alert.status === 'active')
+                          .filter(
+                            (alert) =>
+                              alert.isAutomatic && alert.status === "active"
+                          )
                           .slice(0, 5)
                           .map((alert) => (
                             <div
@@ -1243,27 +1301,42 @@ const Dashboard: React.FC = () => {
                               className="p-4 hover:bg-gray-50 transition-colors cursor-pointer"
                               onClick={() => {
                                 setShowNotifications(false);
-                                setCurrentView('dashboard');
+                                setCurrentView("dashboard");
                               }}
                             >
                               <div className="flex items-start space-x-3">
-                                <div className={`mt-1 ${
-                                  alert.type === 'error' ? 'text-red-500' :
-                                  alert.type === 'warning' ? 'text-yellow-500' :
-                                  alert.type === 'success' ? 'text-green-500' :
-                                  'text-blue-500'
-                                }`}>
-                                  {alert.source === 'humidity' && <Droplets className="h-5 w-5" />}
-                                  {alert.source === 'temperature' && <Thermometer className="h-5 w-5" />}
-                                  {alert.source === 'ph' && <Leaf className="h-5 w-5" />}
-                                  {!['humidity', 'temperature', 'ph'].includes(alert.source) && <AlertTriangle className="h-5 w-5" />}
+                                <div
+                                  className={`mt-1 ${
+                                    alert.type === "error"
+                                      ? "text-red-500"
+                                      : alert.type === "warning"
+                                      ? "text-yellow-500"
+                                      : alert.type === "success"
+                                      ? "text-green-500"
+                                      : "text-blue-500"
+                                  }`}
+                                >
+                                  {alert.source === "humidity" && (
+                                    <Droplets className="h-5 w-5" />
+                                  )}
+                                  {alert.source === "temperature" && (
+                                    <Thermometer className="h-5 w-5" />
+                                  )}
+                                  {alert.source === "ph" && (
+                                    <Leaf className="h-5 w-5" />
+                                  )}
+                                  {!["humidity", "temperature", "ph"].includes(
+                                    alert.source
+                                  ) && <AlertTriangle className="h-5 w-5" />}
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <p className="text-sm font-medium text-gray-900 truncate">
                                     {alert.message}
                                   </p>
                                   <p className="text-xs text-gray-500 mt-1">
-                                    {new Date(alert.createdAt).toLocaleString('pt-BR')}
+                                    {new Date(alert.createdAt).toLocaleString(
+                                      "pt-BR"
+                                    )}
                                   </p>
                                 </div>
                               </div>
@@ -1272,12 +1345,14 @@ const Dashboard: React.FC = () => {
                       )}
                     </div>
 
-                    {alerts.filter(alert => alert.isAutomatic && alert.status === 'active').length > 5 && (
+                    {alerts.filter(
+                      (alert) => alert.isAutomatic && alert.status === "active"
+                    ).length > 5 && (
                       <div className="p-3 border-t border-gray-200 text-center">
                         <button
                           onClick={() => {
                             setShowNotifications(false);
-                            setCurrentView('dashboard');
+                            setCurrentView("dashboard");
                           }}
                           className="text-sm text-blue-600 hover:text-blue-700 font-medium"
                         >
@@ -1302,9 +1377,9 @@ const Dashboard: React.FC = () => {
                 </div>
                 <button
                   onClick={() => {
-                    localStorage.removeItem('token');
-                    localStorage.removeItem('user');
-                    navigate('/');
+                    localStorage.removeItem("token");
+                    localStorage.removeItem("user");
+                    navigate("/");
                   }}
                   className="flex items-center space-x-2 text-gray-700 hover:text-red-600 transition-colors"
                 >
@@ -1352,7 +1427,7 @@ const Dashboard: React.FC = () => {
                     <div className={sensor.color}>{sensor.icon}</div>
                   </div>
                   <div className="flex flex-col items-end space-y-1">
-                    {getStatusIcon(sensor.status)}  
+                    {getStatusIcon(sensor.status)}
                   </div>
                 </div>
                 <h3 className="text-sm font-medium text-gray-600 mb-1">
@@ -1384,9 +1459,7 @@ const Dashboard: React.FC = () => {
                         {sensor.parameterStatus === "Ruim" && "✗ "}
                         {sensor.parameterStatus}
                       </span>
-                      <span className="text-xs text-gray-500">
-                        Agora
-                      </span>
+                      <span className="text-xs text-gray-500">Agora</span>
                     </div>
                   )}
 
@@ -1511,7 +1584,9 @@ const Dashboard: React.FC = () => {
                           }`}
                         ></div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm text-gray-900">{alert.message}</p>
+                          <p className="text-sm text-gray-900">
+                            {alert.message}
+                          </p>
                           <p className="text-xs text-gray-500 mt-1">
                             {getRelativeTime(alert.createdAt)}
                             {alert.sector_id && ` • ${alert.sector_id.name}`}
@@ -1553,7 +1628,9 @@ const Dashboard: React.FC = () => {
                     <div className="flex items-center space-x-3">
                       <Droplets className="h-5 w-5 text-blue-600" />
                       <span className="text-sm text-blue-700 font-medium">
-                        {activeIrrigation ? 'Irrigação Ativa' : 'Ativar Irrigação'}
+                        {activeIrrigation
+                          ? "Irrigação Ativa"
+                          : "Ativar Irrigação"}
                       </span>
                     </div>
                   </button>
@@ -1673,7 +1750,9 @@ const Dashboard: React.FC = () => {
                 </label>
                 <select
                   value={alertForm.type}
-                  onChange={(e) => setAlertForm({ ...alertForm, type: e.target.value as any })}
+                  onChange={(e) =>
+                    setAlertForm({ ...alertForm, type: e.target.value as any })
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="info">Informação</option>
@@ -1689,7 +1768,9 @@ const Dashboard: React.FC = () => {
                 </label>
                 <textarea
                   value={alertForm.message}
-                  onChange={(e) => setAlertForm({ ...alertForm, message: e.target.value })}
+                  onChange={(e) =>
+                    setAlertForm({ ...alertForm, message: e.target.value })
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   rows={3}
                   placeholder="Digite a mensagem do alerta..."
@@ -1701,8 +1782,10 @@ const Dashboard: React.FC = () => {
                   Setor (Opcional)
                 </label>
                 <select
-                  value={alertForm.sector_id || ''}
-                  onChange={(e) => setAlertForm({ ...alertForm, sector_id: e.target.value })}
+                  value={alertForm.sector_id || ""}
+                  onChange={(e) =>
+                    setAlertForm({ ...alertForm, sector_id: e.target.value })
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="">Nenhum setor específico</option>
@@ -1720,10 +1803,10 @@ const Dashboard: React.FC = () => {
                 onClick={() => {
                   setShowCreateAlertModal(false);
                   setAlertForm({
-                    type: 'info',
-                    message: '',
-                    sector_id: '',
-                    source: 'manual'
+                    type: "info",
+                    message: "",
+                    sector_id: "",
+                    source: "manual",
                   });
                 }}
                 className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
@@ -1762,10 +1845,15 @@ const Dashboard: React.FC = () => {
                     <input
                       type="checkbox"
                       checked={alertSettings.humidity.enabled}
-                      onChange={(e) => setAlertSettings({
-                        ...alertSettings,
-                        humidity: { ...alertSettings.humidity, enabled: e.target.checked }
-                      })}
+                      onChange={(e) =>
+                        setAlertSettings({
+                          ...alertSettings,
+                          humidity: {
+                            ...alertSettings.humidity,
+                            enabled: e.target.checked,
+                          },
+                        })
+                      }
                       className="sr-only peer"
                     />
                     <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
@@ -1779,10 +1867,15 @@ const Dashboard: React.FC = () => {
                     <input
                       type="number"
                       value={alertSettings.humidity.min}
-                      onChange={(e) => setAlertSettings({
-                        ...alertSettings,
-                        humidity: { ...alertSettings.humidity, min: parseFloat(e.target.value) }
-                      })}
+                      onChange={(e) =>
+                        setAlertSettings({
+                          ...alertSettings,
+                          humidity: {
+                            ...alertSettings.humidity,
+                            min: parseFloat(e.target.value),
+                          },
+                        })
+                      }
                       disabled={!alertSettings.humidity.enabled}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
                     />
@@ -1794,10 +1887,15 @@ const Dashboard: React.FC = () => {
                     <input
                       type="number"
                       value={alertSettings.humidity.max}
-                      onChange={(e) => setAlertSettings({
-                        ...alertSettings,
-                        humidity: { ...alertSettings.humidity, max: parseFloat(e.target.value) }
-                      })}
+                      onChange={(e) =>
+                        setAlertSettings({
+                          ...alertSettings,
+                          humidity: {
+                            ...alertSettings.humidity,
+                            max: parseFloat(e.target.value),
+                          },
+                        })
+                      }
                       disabled={!alertSettings.humidity.enabled}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
                     />
@@ -1816,10 +1914,15 @@ const Dashboard: React.FC = () => {
                     <input
                       type="checkbox"
                       checked={alertSettings.temperature.enabled}
-                      onChange={(e) => setAlertSettings({
-                        ...alertSettings,
-                        temperature: { ...alertSettings.temperature, enabled: e.target.checked }
-                      })}
+                      onChange={(e) =>
+                        setAlertSettings({
+                          ...alertSettings,
+                          temperature: {
+                            ...alertSettings.temperature,
+                            enabled: e.target.checked,
+                          },
+                        })
+                      }
                       className="sr-only peer"
                     />
                     <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
@@ -1833,10 +1936,15 @@ const Dashboard: React.FC = () => {
                     <input
                       type="number"
                       value={alertSettings.temperature.min}
-                      onChange={(e) => setAlertSettings({
-                        ...alertSettings,
-                        temperature: { ...alertSettings.temperature, min: parseFloat(e.target.value) }
-                      })}
+                      onChange={(e) =>
+                        setAlertSettings({
+                          ...alertSettings,
+                          temperature: {
+                            ...alertSettings.temperature,
+                            min: parseFloat(e.target.value),
+                          },
+                        })
+                      }
                       disabled={!alertSettings.temperature.enabled}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
                     />
@@ -1848,10 +1956,15 @@ const Dashboard: React.FC = () => {
                     <input
                       type="number"
                       value={alertSettings.temperature.max}
-                      onChange={(e) => setAlertSettings({
-                        ...alertSettings,
-                        temperature: { ...alertSettings.temperature, max: parseFloat(e.target.value) }
-                      })}
+                      onChange={(e) =>
+                        setAlertSettings({
+                          ...alertSettings,
+                          temperature: {
+                            ...alertSettings.temperature,
+                            max: parseFloat(e.target.value),
+                          },
+                        })
+                      }
                       disabled={!alertSettings.temperature.enabled}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
                     />
@@ -1870,10 +1983,15 @@ const Dashboard: React.FC = () => {
                     <input
                       type="checkbox"
                       checked={alertSettings.ph.enabled}
-                      onChange={(e) => setAlertSettings({
-                        ...alertSettings,
-                        ph: { ...alertSettings.ph, enabled: e.target.checked }
-                      })}
+                      onChange={(e) =>
+                        setAlertSettings({
+                          ...alertSettings,
+                          ph: {
+                            ...alertSettings.ph,
+                            enabled: e.target.checked,
+                          },
+                        })
+                      }
                       className="sr-only peer"
                     />
                     <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
@@ -1888,10 +2006,15 @@ const Dashboard: React.FC = () => {
                       type="number"
                       step="0.1"
                       value={alertSettings.ph.min}
-                      onChange={(e) => setAlertSettings({
-                        ...alertSettings,
-                        ph: { ...alertSettings.ph, min: parseFloat(e.target.value) }
-                      })}
+                      onChange={(e) =>
+                        setAlertSettings({
+                          ...alertSettings,
+                          ph: {
+                            ...alertSettings.ph,
+                            min: parseFloat(e.target.value),
+                          },
+                        })
+                      }
                       disabled={!alertSettings.ph.enabled}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
                     />
@@ -1904,10 +2027,15 @@ const Dashboard: React.FC = () => {
                       type="number"
                       step="0.1"
                       value={alertSettings.ph.max}
-                      onChange={(e) => setAlertSettings({
-                        ...alertSettings,
-                        ph: { ...alertSettings.ph, max: parseFloat(e.target.value) }
-                      })}
+                      onChange={(e) =>
+                        setAlertSettings({
+                          ...alertSettings,
+                          ph: {
+                            ...alertSettings.ph,
+                            max: parseFloat(e.target.value),
+                          },
+                        })
+                      }
                       disabled={!alertSettings.ph.enabled}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100"
                     />
@@ -1917,33 +2045,43 @@ const Dashboard: React.FC = () => {
 
               {/* Notificações */}
               <div className="border border-gray-200 rounded-lg p-4">
-                <h4 className="font-semibold text-gray-900 mb-3">Notificações</h4>
+                <h4 className="font-semibold text-gray-900 mb-3">
+                  Notificações
+                </h4>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-700">Notificações por Email</span>
+                    <span className="text-sm text-gray-700">
+                      Notificações por Email
+                    </span>
                     <label className="relative inline-flex items-center cursor-pointer">
                       <input
                         type="checkbox"
                         checked={alertSettings.emailNotifications}
-                        onChange={(e) => setAlertSettings({
-                          ...alertSettings,
-                          emailNotifications: e.target.checked
-                        })}
+                        onChange={(e) =>
+                          setAlertSettings({
+                            ...alertSettings,
+                            emailNotifications: e.target.checked,
+                          })
+                        }
                         className="sr-only peer"
                       />
                       <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                     </label>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-700">Notificações do Sistema</span>
+                    <span className="text-sm text-gray-700">
+                      Notificações do Sistema
+                    </span>
                     <label className="relative inline-flex items-center cursor-pointer">
                       <input
                         type="checkbox"
                         checked={alertSettings.systemNotifications}
-                        onChange={(e) => setAlertSettings({
-                          ...alertSettings,
-                          systemNotifications: e.target.checked
-                        })}
+                        onChange={(e) =>
+                          setAlertSettings({
+                            ...alertSettings,
+                            systemNotifications: e.target.checked,
+                          })
+                        }
                         className="sr-only peer"
                       />
                       <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
@@ -1987,12 +2125,13 @@ const Dashboard: React.FC = () => {
                 </label>
                 <div className="px-4 py-3 bg-gray-50 rounded-lg border border-gray-200">
                   <p className="text-gray-900 font-medium">
-                    {activeSector?.name || 'Nenhum setor selecionado'}
+                    {activeSector?.name || "Nenhum setor selecionado"}
                   </p>
                 </div>
                 {!activeSector && (
                   <p className="text-sm text-amber-600 mt-2">
-                    ⚠️ Clique no ícone de lápis no header para selecionar um setor
+                    ⚠️ Clique no ícone de lápis no header para selecionar um
+                    setor
                   </p>
                 )}
               </div>
@@ -2006,7 +2145,9 @@ const Dashboard: React.FC = () => {
                   min="1"
                   max="120"
                   value={irrigationDuration}
-                  onChange={(e) => setIrrigationDuration(parseInt(e.target.value))}
+                  onChange={(e) =>
+                    setIrrigationDuration(parseInt(e.target.value))
+                  }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
                 <p className="text-xs text-gray-500 mt-1">
@@ -2016,7 +2157,9 @@ const Dashboard: React.FC = () => {
 
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                 <p className="text-sm text-blue-800">
-                  <strong>Atenção:</strong> A irrigação será iniciada imediatamente e você poderá acompanhar o progresso na barra superior.
+                  <strong>Atenção:</strong> A irrigação será iniciada
+                  imediatamente e você poderá acompanhar o progresso na barra
+                  superior.
                 </p>
               </div>
             </div>
@@ -2057,7 +2200,7 @@ const Dashboard: React.FC = () => {
                   </label>
                   <div className="px-4 py-3 bg-gray-50 rounded-lg border border-gray-200">
                     <p className="text-gray-900 font-medium">
-                      {activeSector?.name || 'Nenhum setor selecionado'}
+                      {activeSector?.name || "Nenhum setor selecionado"}
                     </p>
                   </div>
                 </div>
@@ -2071,8 +2214,13 @@ const Dashboard: React.FC = () => {
                     onChange={(e) => setReportYear(parseInt(e.target.value))}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   >
-                    {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - i).map(year => (
-                      <option key={year} value={year}>{year}</option>
+                    {Array.from(
+                      { length: 5 },
+                      (_, i) => new Date().getFullYear() - i
+                    ).map((year) => (
+                      <option key={year} value={year}>
+                        {year}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -2089,7 +2237,7 @@ const Dashboard: React.FC = () => {
                     disabled={!activeSector?._id || loadingReport}
                     className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {loadingReport ? 'Carregando...' : 'Buscar Dados'}
+                    {loadingReport ? "Carregando..." : "Buscar Dados"}
                   </button>
                 </div>
               </div>
@@ -2097,67 +2245,120 @@ const Dashboard: React.FC = () => {
               <div className="space-y-6">
                 {/* Informações do Relatório */}
                 <div className="bg-gradient-to-r from-blue-50 to-green-50 rounded-lg p-4 border border-gray-200">
-                  <h4 className="font-semibold text-gray-900 mb-2">Informações do Relatório</h4>
+                  <h4 className="font-semibold text-gray-900 mb-2">
+                    Informações do Relatório
+                  </h4>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <p className="text-gray-600">Setor:</p>
-                      <p className="font-medium text-gray-900">{reportData.sector.name}</p>
+                      <p className="font-medium text-gray-900">
+                        {reportData.sector.name}
+                      </p>
                     </div>
                     <div>
                       <p className="text-gray-600">Ano:</p>
-                      <p className="font-medium text-gray-900">{reportData.year}</p>
+                      <p className="font-medium text-gray-900">
+                        {reportData.year}
+                      </p>
                     </div>
                     <div>
                       <p className="text-gray-600">Total de Leituras:</p>
-                      <p className="font-medium text-gray-900">{reportData.dataPoints}</p>
+                      <p className="font-medium text-gray-900">
+                        {reportData.dataPoints}
+                      </p>
                     </div>
                     <div>
                       <p className="text-gray-600">Alertas:</p>
-                      <p className="font-medium text-gray-900">{reportData.alerts.stats.total}</p>
+                      <p className="font-medium text-gray-900">
+                        {reportData.alerts.stats.total}
+                      </p>
                     </div>
                   </div>
                 </div>
 
                 {/* Estatísticas Gerais */}
                 <div>
-                  <h4 className="font-semibold text-gray-900 mb-3">Estatísticas Gerais</h4>
+                  <h4 className="font-semibold text-gray-900 mb-3">
+                    Estatísticas Gerais
+                  </h4>
                   <div className="grid grid-cols-3 gap-4">
                     <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
-                      <p className="text-sm text-blue-600 font-medium mb-2">Umidade (%)</p>
-                      <p className="text-xs text-gray-600">Média: <span className="font-semibold">{reportData.statistics.humidity.avg.toFixed(1)}</span></p>
-                      <p className="text-xs text-gray-600">Min: {reportData.statistics.humidity.min.toFixed(1)} | Max: {reportData.statistics.humidity.max.toFixed(1)}</p>
+                      <p className="text-sm text-blue-600 font-medium mb-2">
+                        Umidade (%)
+                      </p>
+                      <p className="text-xs text-gray-600">
+                        Média:{" "}
+                        <span className="font-semibold">
+                          {reportData.statistics.humidity.avg.toFixed(1)}
+                        </span>
+                      </p>
+                      <p className="text-xs text-gray-600">
+                        Min: {reportData.statistics.humidity.min.toFixed(1)} |
+                        Max: {reportData.statistics.humidity.max.toFixed(1)}
+                      </p>
                     </div>
                     <div className="bg-red-50 rounded-lg p-4 border border-red-200">
-                      <p className="text-sm text-red-600 font-medium mb-2">Temperatura (°C)</p>
-                      <p className="text-xs text-gray-600">Média: <span className="font-semibold">{reportData.statistics.temperature.avg.toFixed(1)}</span></p>
-                      <p className="text-xs text-gray-600">Min: {reportData.statistics.temperature.min.toFixed(1)} | Max: {reportData.statistics.temperature.max.toFixed(1)}</p>
+                      <p className="text-sm text-red-600 font-medium mb-2">
+                        Temperatura (°C)
+                      </p>
+                      <p className="text-xs text-gray-600">
+                        Média:{" "}
+                        <span className="font-semibold">
+                          {reportData.statistics.temperature.avg.toFixed(1)}
+                        </span>
+                      </p>
+                      <p className="text-xs text-gray-600">
+                        Min: {reportData.statistics.temperature.min.toFixed(1)}{" "}
+                        | Max:{" "}
+                        {reportData.statistics.temperature.max.toFixed(1)}
+                      </p>
                     </div>
                     <div className="bg-green-50 rounded-lg p-4 border border-green-200">
-                      <p className="text-sm text-green-600 font-medium mb-2">pH</p>
-                      <p className="text-xs text-gray-600">Média: <span className="font-semibold">{reportData.statistics.ph.avg.toFixed(2)}</span></p>
-                      <p className="text-xs text-gray-600">Min: {reportData.statistics.ph.min.toFixed(2)} | Max: {reportData.statistics.ph.max.toFixed(2)}</p>
+                      <p className="text-sm text-green-600 font-medium mb-2">
+                        pH
+                      </p>
+                      <p className="text-xs text-gray-600">
+                        Média:{" "}
+                        <span className="font-semibold">
+                          {reportData.statistics.ph.avg.toFixed(2)}
+                        </span>
+                      </p>
+                      <p className="text-xs text-gray-600">
+                        Min: {reportData.statistics.ph.min.toFixed(2)} | Max:{" "}
+                        {reportData.statistics.ph.max.toFixed(2)}
+                      </p>
                     </div>
                   </div>
                 </div>
 
                 {/* Estatísticas de Alertas */}
                 <div>
-                  <h4 className="font-semibold text-gray-900 mb-3">Estatísticas de Alertas</h4>
+                  <h4 className="font-semibold text-gray-900 mb-3">
+                    Estatísticas de Alertas
+                  </h4>
                   <div className="grid grid-cols-4 gap-3">
                     <div className="bg-gray-50 rounded-lg p-3 border border-gray-200 text-center">
-                      <p className="text-2xl font-bold text-gray-900">{reportData.alerts.stats.total}</p>
+                      <p className="text-2xl font-bold text-gray-900">
+                        {reportData.alerts.stats.total}
+                      </p>
                       <p className="text-xs text-gray-600">Total</p>
                     </div>
                     <div className="bg-blue-50 rounded-lg p-3 border border-blue-200 text-center">
-                      <p className="text-2xl font-bold text-blue-600">{reportData.alerts.stats.byType.info}</p>
+                      <p className="text-2xl font-bold text-blue-600">
+                        {reportData.alerts.stats.byType.info}
+                      </p>
                       <p className="text-xs text-gray-600">Info</p>
                     </div>
                     <div className="bg-amber-50 rounded-lg p-3 border border-amber-200 text-center">
-                      <p className="text-2xl font-bold text-amber-600">{reportData.alerts.stats.byType.warning}</p>
+                      <p className="text-2xl font-bold text-amber-600">
+                        {reportData.alerts.stats.byType.warning}
+                      </p>
                       <p className="text-xs text-gray-600">Avisos</p>
                     </div>
                     <div className="bg-red-50 rounded-lg p-3 border border-red-200 text-center">
-                      <p className="text-2xl font-bold text-red-600">{reportData.alerts.stats.byType.error}</p>
+                      <p className="text-2xl font-bold text-red-600">
+                        {reportData.alerts.stats.byType.error}
+                      </p>
                       <p className="text-xs text-gray-600">Erros</p>
                     </div>
                   </div>

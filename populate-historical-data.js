@@ -8,7 +8,7 @@ dotenv.config();
 const CONFIG = {
   apiUrl: process.env.API_URL || 'http://localhost:3000/api/v1',
   macAddress: process.env.MAC_ADDRESS || 'AA:BB:CC:DD:EE:FF',
-  startDate: new Date('2025-06-10T00:00:00-03:00'), // Data inicial
+  startDate: new Date('2025-10-28T00:00:00-03:00'), // Data inicial
   endDate: new Date(), // Data atual
   intervalMinutes: 10 // Intervalo entre leituras
 };

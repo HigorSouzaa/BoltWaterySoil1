@@ -1,37 +1,43 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Droplets, Mail, Lock, User, ArrowLeft, AlertCircle } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext'; // Import atualizado
-import TwoFactorAuth from './TwoFactorAuth';
-import authService from '../services/authService';
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  Mail,
+  Lock,
+  User,
+  ArrowLeft,
+  AlertCircle,
+} from "lucide-react";
+import { useAuth } from "../contexts/AuthContext"; // Import atualizado
+import TwoFactorAuth from "./TwoFactorAuth";
+import authService from "../services/authService";
 
 const Auth: React.FC = () => {
   const navigate = useNavigate();
   const { register, isLoading, error, clearError } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [show2FA, setShow2FA] = useState(false);
-  const [twoFAEmail, setTwoFAEmail] = useState('');
+  const [twoFAEmail, setTwoFAEmail] = useState("");
   const [twoFAError, setTwoFAError] = useState<string | null>(null);
   const [twoFALoading, setTwoFALoading] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [rememberMe, setRememberMe] = useState(false);
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: ''
+    name: "",
+    email: "",
+    password: "",
   });
 
   // Carregar credenciais salvas ao montar o componente
   useEffect(() => {
-    const savedEmail = localStorage.getItem('rememberedEmail');
-    const savedPassword = localStorage.getItem('rememberedPassword');
+    const savedEmail = localStorage.getItem("rememberedEmail");
+    const savedPassword = localStorage.getItem("rememberedPassword");
 
     if (savedEmail && savedPassword) {
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
         email: savedEmail,
-        password: savedPassword
+        password: savedPassword,
       }));
       setRememberMe(true);
     }
@@ -62,7 +68,7 @@ const Auth: React.FC = () => {
         // Primeiro, verificar se precisa de 2FA
         const response = await authService.login({
           email: formData.email,
-          pass: formData.password
+          pass: formData.password,
         });
 
         // Verificar se precisa de 2FA
@@ -77,37 +83,38 @@ const Auth: React.FC = () => {
         if (response.token && response.user) {
           // Salvar credenciais se "Lembrar de mim" estiver marcado
           if (rememberMe) {
-            localStorage.setItem('rememberedEmail', formData.email);
-            localStorage.setItem('rememberedPassword', formData.password);
+            localStorage.setItem("rememberedEmail", formData.email);
+            localStorage.setItem("rememberedPassword", formData.password);
           } else {
             // Limpar credenciais salvas se desmarcado
-            localStorage.removeItem('rememberedEmail');
-            localStorage.removeItem('rememberedPassword');
+            localStorage.removeItem("rememberedEmail");
+            localStorage.removeItem("rememberedPassword");
           }
 
           authService.saveAuthData(response.token, response.user);
           setLoginLoading(false);
-          navigate('/dashboard');
+          navigate("/dashboard");
         } else {
-          throw new Error('Resposta inválida do servidor');
+          throw new Error("Resposta inválida do servidor");
         }
       } else {
         // Registro - usar o hook do contexto
         await register({
           name: formData.name,
           email: formData.email,
-          pass: formData.password
+          pass: formData.password,
         });
 
         // Sucesso - redirecionar para dashboard
-        navigate('/dashboard');
+        navigate("/dashboard");
       }
     } catch (err) {
       setLoginLoading(false);
       // Capturar e mostrar o erro
-      const errorMessage = err instanceof Error ? err.message : 'Erro ao fazer login';
+      const errorMessage =
+        err instanceof Error ? err.message : "Erro ao fazer login";
       setLoginError(errorMessage);
-      console.error('Erro na autenticação:', err);
+      console.error("Erro na autenticação:", err);
     }
   };
 
@@ -120,12 +127,12 @@ const Auth: React.FC = () => {
 
       if (response.token && response.user) {
         authService.saveAuthData(response.token, response.user);
-        navigate('/dashboard');
+        navigate("/dashboard");
       } else {
-        throw new Error('Resposta inválida do servidor');
+        throw new Error("Resposta inválida do servidor");
       }
     } catch (err) {
-      setTwoFAError(err instanceof Error ? err.message : 'Código inválido');
+      setTwoFAError(err instanceof Error ? err.message : "Código inválido");
     } finally {
       setTwoFALoading(false);
     }
@@ -133,9 +140,9 @@ const Auth: React.FC = () => {
 
   const handleBack2FA = () => {
     setShow2FA(false);
-    setTwoFAEmail('');
+    setTwoFAEmail("");
     setTwoFAError(null);
-    setFormData({ ...formData, password: '' });
+    setFormData({ ...formData, password: "" });
   };
 
   // Se está mostrando 2FA, renderizar componente 2FA
@@ -154,14 +161,14 @@ const Auth: React.FC = () => {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [e.target.name]: e.target.value,
     });
   };
 
   const toggleAuthMode = () => {
     setIsLogin(!isLogin);
     clearError();
-    setFormData({ name: '', email: '', password: '' });
+    setFormData({ name: "", email: "", password: "" });
   };
 
   return (
@@ -169,7 +176,7 @@ const Auth: React.FC = () => {
       <div className="max-w-md w-full">
         {/* Back Button */}
         <button
-          onClick={() => navigate('/')}
+          onClick={() => navigate("/")}
           className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-8 transition-colors duration-200"
         >
           <ArrowLeft className="h-5 w-5" />
@@ -181,19 +188,22 @@ const Auth: React.FC = () => {
           {/* Logo and Title */}
           <div className="text-center mb-8">
             <div className="flex items-center justify-center space-x-2 mb-4">
-              <Droplets className="h-10 w-10 text-blue-600" />
+              <img
+                src="/images/logo.png"
+                alt="ECO-SOIL PRO - Vista frontal em campo"
+                className="w-10"
+              ></img>
               <span className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">
                 WaterySoil
               </span>
             </div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">
-              {isLogin ? 'Bem-vindo de volta!' : 'Comece sua jornada'}
+              {isLogin ? "Bem-vindo de volta!" : "Comece sua jornada"}
             </h2>
             <p className="text-gray-600">
-              {isLogin 
-                ? 'Entre na sua conta para acessar o dashboard' 
-                : 'Crie sua conta e transforme sua agricultura'
-              }
+              {isLogin
+                ? "Entre na sua conta para acessar o dashboard"
+                : "Crie sua conta e transforme sua agricultura"}
             </p>
           </div>
 
@@ -209,7 +219,10 @@ const Auth: React.FC = () => {
           <form onSubmit={handleSubmit} className="space-y-6">
             {!isLogin && (
               <div>
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
+                <label
+                  htmlFor="name"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
                   Nome completo
                 </label>
                 <div className="relative">
@@ -230,7 +243,10 @@ const Auth: React.FC = () => {
             )}
 
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="email"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Email
               </label>
               <div className="relative">
@@ -250,7 +266,10 @@ const Auth: React.FC = () => {
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Senha
               </label>
               <div className="relative">
@@ -278,33 +297,42 @@ const Auth: React.FC = () => {
                     onChange={(e) => setRememberMe(e.target.checked)}
                     className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                   />
-                  <span className="ml-2 text-sm text-gray-600">Lembrar de mim</span>
+                  <span className="ml-2 text-sm text-gray-600">
+                    Lembrar de mim
+                  </span>
                 </label>
-                <a href="#" className="text-sm text-blue-600 hover:text-blue-700">
+                <a
+                  href="#"
+                  className="text-sm text-blue-600 hover:text-blue-700"
+                >
                   Esqueceu a senha?
                 </a>
               </div>
             )}
-          
+
             <button
               type="submit"
               disabled={isLoading || loginLoading}
               className="w-full bg-gradient-to-r from-blue-600 to-blue-700 text-white py-3 px-4 rounded-xl font-semibold hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
             >
-              {(isLoading || loginLoading) ? 'Carregando...' : (isLogin ? 'Entrar' : 'Criar Conta')}
+              {isLoading || loginLoading
+                ? "Carregando..."
+                : isLogin
+                ? "Entrar"
+                : "Criar Conta"}
             </button>
           </form>
 
           {/* Toggle Auth Mode */}
           <div className="mt-8 text-center">
             <p className="text-gray-600">
-              {isLogin ? 'Não tem uma conta?' : 'Já tem uma conta?'}{' '}
+              {isLogin ? "Não tem uma conta?" : "Já tem uma conta?"}{" "}
               <button
                 onClick={toggleAuthMode}
                 disabled={isLoading}
                 className="text-blue-600 hover:text-blue-700 font-semibold transition-colors duration-200 disabled:opacity-50"
               >
-                {isLogin ? 'Cadastre-se' : 'Entre aqui'}
+                {isLogin ? "Cadastre-se" : "Entre aqui"}
               </button>
             </p>
           </div>
@@ -312,7 +340,8 @@ const Auth: React.FC = () => {
           {/* Social Proof */}
           <div className="mt-8 p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-xl">
             <p className="text-sm text-gray-600 text-center">
-              <span className="font-semibold text-green-600">+2,500</span> produtores já estão usando o WaterySoil
+              <span className="font-semibold text-green-600">+2,500</span>{" "}
+              produtores já estão usando o WaterySoil
             </p>
           </div>
         </div>
