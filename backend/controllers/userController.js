@@ -77,7 +77,7 @@ const register = async (req, res) => {
     await user.save();
 
     // Enviar email de boas-vindas
-    await enviarEmailBoasVindas(email, name);
+    // await enviarEmailBoasVindas(email, name);
 
     const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET, {
       expiresIn: "1d",
@@ -115,7 +115,7 @@ const login = async (req, res) => {
       twoFactorStore.set(email, { code, expiresAt, userId: user._id.toString() });
 
       // Enviar código por email
-      await enviarCodigoEmail(email, code);
+      // await enviarCodigoEmail(email, code);
 
       // Retornar resposta indicando que 2FA é necessário
       return res.status(200).json({
@@ -137,7 +137,7 @@ const login = async (req, res) => {
       dateStyle: 'short',
       timeStyle: 'medium'
     });
-    await enviarEmailLogin(email, timestamp);
+    // await enviarEmailLogin(email, timestamp);
 
     return res.status(200).json({ token, user: userData });
   } catch (error) {
@@ -209,7 +209,7 @@ const updateProfile = async (req, res) => {
     }
 
     // Enviar email de notificação de alteração de perfil
-    await enviarEmailAlteracaoPerfil(user.email, user.name);
+    // await enviarEmailAlteracaoPerfil(user.email, user.name);
 
     // Atualiza o usuário no banco
     const updatedUser = await User.findByIdAndUpdate(
@@ -311,7 +311,7 @@ const changePassword = async (req, res) => {
     await user.save();
 
     // Enviar email de notificação de alteração de senha
-    await enviarEmailAlteracaoSenha(user.email, user.name);
+    // await enviarEmailAlteracaoSenha(user.email, user.name);
 
     return res.status(200).json({
       message: "Senha alterada com sucesso!",
@@ -370,7 +370,7 @@ const verify2FACode = async (req, res) => {
       dateStyle: 'short',
       timeStyle: 'medium'
     });
-    await enviarEmailLogin(email, timestamp);
+    // await enviarEmailLogin(email, timestamp);
 
     return res.status(200).json({ token, user });
   } catch (error) {
@@ -500,7 +500,7 @@ const requestEmailChange = async (req, res) => {
     });
 
     // Enviar email de confirmação para o novo email
-    await enviarEmailConfirmacaoAlteracaoEmail(newEmail, user.name, token);
+    // await enviarEmailConfirmacaoAlteracaoEmail(newEmail, user.name, token);
 
     return res.status(200).json({
       message: "Email de confirmação enviado para o novo endereço",
@@ -575,7 +575,7 @@ const verifyEmailToken = async (req, res) => {
     emailChangeStore.delete(token);
 
     // Enviar email de notificação para o email antigo
-    await enviarEmailNotificacaoAlteracaoEmail(oldEmail, user.name, decoded.newEmail);
+    // await enviarEmailNotificacaoAlteracaoEmail(oldEmail, user.name, decoded.newEmail);
 
     return res.status(200).json({
       message: "Email alterado com sucesso!",
