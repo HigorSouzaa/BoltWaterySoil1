@@ -10,6 +10,7 @@ const {
   enviarEmailConfirmacaoAlteracaoEmail,
   enviarEmailNotificacaoAlteracaoEmail
 } = require("../services/serviceAuthEmail");
+const { getLocationFromIP, getClientIP } = require("../services/geolocation");
 
 // Armazenamento temporário de códigos 2FA (em produção, usar Redis)
 const twoFactorStore = new Map();
@@ -105,14 +106,29 @@ const login = async (req, res) => {
       return res.status(400).json({ message: "Email ou senha incorretos" });
     }
 
+    // Captura o IP do cliente
+    const clientIP = getClientIP(req);
+    console.log(`🔐 Login do usuário: ${email}`);
+    console.log(`🌐 IP detectado: ${clientIP}`);
+
+    // Busca geolocalização pelo IP
+    console.log('📍 Buscando geolocalização...');
+    const locationData = await getLocationFromIP(clientIP);
+    console.log(`✅ Localização: ${locationData.city}, ${locationData.region} - ${locationData.country}`);
+
     // Verificar se 2FA está ativado
     if (user.twoFactorEnabled) {
       // Gerar código 2FA
       const code = gerarCodigo();
       const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutos
 
-      // Armazenar código temporariamente
-      twoFactorStore.set(email, { code, expiresAt, userId: user._id.toString() });
+      // Armazenar código temporariamente COM os dados de localização
+      twoFactorStore.set(email, { 
+        code, 
+        expiresAt, 
+        userId: user._id.toString(),
+        locationData // Armazena para usar após verificação 2FA
+      });
 
       // Enviar código por email
       await enviarCodigoEmail(email, code);
@@ -131,13 +147,19 @@ const login = async (req, res) => {
 
     const { password: _, ...userData } = user.toObject();
 
-    // Enviar email de notificação de login
+    // Enviar email de notificação de login com geolocalização
     const timestamp = new Date().toLocaleString('pt-BR', {
       timeZone: 'America/Sao_Paulo',
-      dateStyle: 'short',
-      timeStyle: 'medium'
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
     });
-    await enviarEmailLogin(email, timestamp);
+    
+    await enviarEmailLogin(email, timestamp, locationData);
+    console.log('📧 Email de notificação enviado com geolocalização');
 
     return res.status(200).json({ token, user: userData });
   } catch (error) {
@@ -361,16 +383,25 @@ const verify2FACode = async (req, res) => {
       expiresIn: "1d",
     });
 
+    // Recupera dados de localização armazenados durante o login
+    const locationData = storedData.locationData || {};
+
     // Remover código usado
     twoFactorStore.delete(email);
 
-    // Enviar email de notificação de login
+    // Enviar email de notificação de login com geolocalização
     const timestamp = new Date().toLocaleString('pt-BR', {
       timeZone: 'America/Sao_Paulo',
-      dateStyle: 'short',
-      timeStyle: 'medium'
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
     });
-    await enviarEmailLogin(email, timestamp);
+    
+    await enviarEmailLogin(email, timestamp, locationData);
+    console.log('📧 Email de notificação enviado com geolocalização (após 2FA)');
 
     return res.status(200).json({ token, user });
   } catch (error) {

@@ -234,10 +234,12 @@ function twoFactorCodeEmail(code) {
  * Email de Notificação de Login
  * @param {string} email - Email do usuário
  * @param {string} timestamp - Data/hora do login
- * @param {string} ip - IP do login (opcional)
+ * @param {object} locationData - Dados de geolocalização { ip, country, region, city, timezone, isp }
  * @returns {object} { subject, text, html }
  */
-function loginNotificationEmail(email, timestamp = new Date().toLocaleString('pt-BR'), ip = null) {
+function loginNotificationEmail(email, timestamp = new Date().toLocaleString('pt-BR'), locationData = {}) {
+  const { ip, country, region, city, timezone, isp } = locationData;
+  
   const content = `
     <table width="100%" border="0" cellpadding="0" cellspacing="0">
         <tr>
@@ -282,12 +284,48 @@ function loginNotificationEmail(email, timestamp = new Date().toLocaleString('pt
                     </tr>
                     ${ip ? `
                     <tr>
-                        <td>
+                        <td style="padding-bottom: 12px;">
                             <p style="color: #065f46; font-size: 13px; font-weight: 600; margin: 0 0 4px 0;">
                                 🌐 ENDEREÇO IP:
                             </p>
                             <p style="color: #1f2937; font-size: 15px; margin: 0; font-family: 'Courier New', monospace;">
                                 ${ip}
+                            </p>
+                        </td>
+                    </tr>
+                    ` : ''}
+                    ${city && country ? `
+                    <tr>
+                        <td style="padding-bottom: 12px;">
+                            <p style="color: #065f46; font-size: 13px; font-weight: 600; margin: 0 0 4px 0;">
+                                📍 LOCALIZAÇÃO:
+                            </p>
+                            <p style="color: #1f2937; font-size: 15px; margin: 0;">
+                                ${city}${region && region !== 'Desconhecido' ? `, ${region}` : ''} - ${country}
+                            </p>
+                        </td>
+                    </tr>
+                    ` : ''}
+                    ${timezone && timezone !== 'N/A' ? `
+                    <tr>
+                        <td style="padding-bottom: 12px;">
+                            <p style="color: #065f46; font-size: 13px; font-weight: 600; margin: 0 0 4px 0;">
+                                ⏰ FUSO HORÁRIO:
+                            </p>
+                            <p style="color: #1f2937; font-size: 15px; margin: 0;">
+                                ${timezone}
+                            </p>
+                        </td>
+                    </tr>
+                    ` : ''}
+                    ${isp && isp !== 'N/A' && isp !== 'Desconhecido' ? `
+                    <tr>
+                        <td>
+                            <p style="color: #065f46; font-size: 13px; font-weight: 600; margin: 0 0 4px 0;">
+                                🏢 PROVEDOR (ISP):
+                            </p>
+                            <p style="color: #1f2937; font-size: 15px; margin: 0;">
+                                ${isp}
                             </p>
                         </td>
                     </tr>
@@ -304,7 +342,7 @@ function loginNotificationEmail(email, timestamp = new Date().toLocaleString('pt
                                 ⚠️ Não foi você?
                             </p>
                             <p style="color: #7f1d1d; font-size: 14px; line-height: 1.6; margin: 0;">
-                                Se você não reconhece este login, recomendamos que altere sua senha imediatamente e ative a autenticação em duas etapas.
+                                Se você não reconhece este login ou localização, recomendamos que altere sua senha imediatamente e ative a autenticação em duas etapas.
                             </p>
                         </td>
                     </tr>
@@ -314,9 +352,13 @@ function loginNotificationEmail(email, timestamp = new Date().toLocaleString('pt
     </table>
   `;
 
+  const locationText = city && country ? `\nLocalização: ${city}${region && region !== 'Desconhecido' ? `, ${region}` : ''} - ${country}` : '';
+  const timezoneText = timezone && timezone !== 'N/A' ? `\nFuso Horário: ${timezone}` : '';
+  const ispText = isp && isp !== 'N/A' && isp !== 'Desconhecido' ? `\nProvedor: ${isp}` : '';
+
   return {
     subject: "✅ Novo Login Detectado - WaterySoil",
-    text: `Novo login detectado na sua conta WaterySoil\n\nConta: ${email}\nData/Hora: ${timestamp}${ip ? `\nIP: ${ip}` : ''}\n\nSe não foi você, altere sua senha imediatamente.\n\nEquipe WaterySoil`,
+    text: `Novo login detectado na sua conta WaterySoil\n\nConta: ${email}\nData/Hora: ${timestamp}${ip ? `\nIP: ${ip}` : ''}${locationText}${timezoneText}${ispText}\n\nSe não foi você, altere sua senha imediatamente.\n\nEquipe WaterySoil`,
     html: baseTemplate("Novo Login", content)
   };
 }
