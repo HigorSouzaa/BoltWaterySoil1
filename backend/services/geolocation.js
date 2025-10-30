@@ -1,114 +1,265 @@
 /**
- * Serviço de Geolocalização por IP
- * Usa múltiplas APIs gratuitas como fallback
+ * Serviço de Geolocalização por IP - WaterySoil
+ * Usa múltiplas APIs com fallback para garantir funcionamento robusto
+ * Implementa detecção automática de IP público quando necessário
  */
 
 const axios = require('axios');
-const geoip = require('geoip-lite');
+
+/**
+ * Normaliza o IP para formato adequado
+ * @param {string} ip - Endereço IP
+ * @returns {string|null} IP normalizado ou null se for IP local
+ */
+function normalizeIP(ip) {
+  // Remove prefixo IPv6 para IPv4
+  if (ip.startsWith('::ffff:')) {
+    ip = ip.replace('::ffff:', '');
+  }
+  
+  // Se for localhost ou IP privado, retorna null para buscar IP público
+  if (ip === '::1' || ip === '127.0.0.1' || ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.')) {
+    console.log('⚠️  IP local detectado, buscando IP público real...');
+    return null;
+  }
+  
+  return ip;
+}
+
+/**
+ * Obtém o IP público real da máquina
+ * @returns {Promise<string>} IP público
+ */
+async function getPublicIP() {
+  const services = [
+    'https://api.ipify.org?format=json',
+    'https://api.my-ip.io/ip.json',
+    'https://ipapi.co/json/',
+    'https://api.seeip.org/jsonip'
+  ];
+
+  for (const service of services) {
+    try {
+      console.log(`🔍 Tentando obter IP público de: ${service}`);
+      const response = await axios.get(service, { timeout: 5000 });
+      
+      let publicIP = null;
+      if (response.data.ip) {
+        publicIP = response.data.ip;
+      } else if (response.data.IPv4) {
+        publicIP = response.data.IPv4;
+      } else if (typeof response.data === 'string') {
+        publicIP = response.data;
+      }
+      
+      if (publicIP) {
+        console.log(`✅ IP público encontrado: ${publicIP}`);
+        return publicIP;
+      }
+    } catch (error) {
+      console.log(`❌ Falha em ${service}: ${error.message}`);
+      continue;
+    }
+  }
+  
+  throw new Error('Não foi possível obter IP público');
+}
+
+/**
+ * Tenta obter geolocalização usando ip-api.com
+ * @param {string} ip - Endereço IP
+ * @returns {Promise<Object>} Dados de geolocalização
+ */
+async function tryIpApi(ip) {
+  console.log('🌍 Tentando ip-api.com...');
+  const response = await axios.get(
+    `http://ip-api.com/json/${ip}?fields=status,message,country,countryCode,region,regionName,city,zip,lat,lon,timezone,isp,query`,
+    { timeout: 5000 }
+  );
+  
+  if (response.data.status === 'fail') {
+    throw new Error(response.data.message);
+  }
+
+  return {
+    ip: response.data.query,
+    country: response.data.country,
+    countryCode: response.data.countryCode,
+    region: response.data.regionName,
+    regionCode: response.data.region,
+    city: response.data.city,
+    zip: response.data.zip,
+    latitude: response.data.lat,
+    longitude: response.data.lon,
+    timezone: response.data.timezone,
+    isp: response.data.isp
+  };
+}
+
+/**
+ * Tenta obter geolocalização usando ipapi.co
+ * @param {string} ip - Endereço IP
+ * @returns {Promise<Object>} Dados de geolocalização
+ */
+async function tryIpapiCo(ip) {
+  console.log('🌍 Tentando ipapi.co...');
+  const response = await axios.get(`https://ipapi.co/${ip}/json/`, { timeout: 5000 });
+  
+  if (response.data.error) {
+    throw new Error(response.data.reason);
+  }
+
+  return {
+    ip: response.data.ip,
+    country: response.data.country_name,
+    countryCode: response.data.country_code,
+    region: response.data.region,
+    regionCode: response.data.region_code,
+    city: response.data.city,
+    zip: response.data.postal,
+    latitude: response.data.latitude,
+    longitude: response.data.longitude,
+    timezone: response.data.timezone,
+    isp: response.data.org
+  };
+}
+
+/**
+ * Tenta obter geolocalização usando ipwhois.app
+ * @param {string} ip - Endereço IP
+ * @returns {Promise<Object>} Dados de geolocalização
+ */
+async function tryIpWhois(ip) {
+  console.log('🌍 Tentando ipwhois.app...');
+  const response = await axios.get(`http://ipwhois.app/json/${ip}`, { timeout: 5000 });
+  
+  if (!response.data.success) {
+    throw new Error('Falha na API ipwhois');
+  }
+
+  return {
+    ip: response.data.ip,
+    country: response.data.country,
+    countryCode: response.data.country_code,
+    region: response.data.region,
+    regionCode: response.data.region,
+    city: response.data.city,
+    zip: response.data.postal || 'N/A',
+    latitude: response.data.latitude,
+    longitude: response.data.longitude,
+    timezone: response.data.timezone,
+    isp: response.data.isp
+  };
+}
+
+/**
+ * Tenta obter geolocalização usando ipinfo.io
+ * @param {string} ip - Endereço IP
+ * @returns {Promise<Object>} Dados de geolocalização
+ */
+async function tryIpInfo(ip) {
+  console.log('🌍 Tentando ipinfo.io...');
+  const response = await axios.get(`https://ipinfo.io/${ip}/json`, { timeout: 5000 });
+  
+  const [lat, lon] = (response.data.loc || '0,0').split(',');
+
+  return {
+    ip: response.data.ip,
+    country: response.data.country,
+    countryCode: response.data.country,
+    region: response.data.region || 'N/A',
+    regionCode: response.data.region || 'N/A',
+    city: response.data.city || 'N/A',
+    zip: response.data.postal || 'N/A',
+    latitude: parseFloat(lat),
+    longitude: parseFloat(lon),
+    timezone: response.data.timezone,
+    isp: response.data.org
+  };
+}
+
+/**
+ * Tenta obter geolocalização usando freeipapi.com
+ * @param {string} ip - Endereço IP
+ * @returns {Promise<Object>} Dados de geolocalização
+ */
+async function tryFreeIpApi(ip) {
+  console.log('🌍 Tentando freeipapi.com...');
+  const response = await axios.get(`https://freeipapi.com/api/json/${ip}`, { timeout: 5000 });
+
+  return {
+    ip: response.data.ipAddress,
+    country: response.data.countryName,
+    countryCode: response.data.countryCode,
+    region: response.data.regionName,
+    regionCode: response.data.regionName,
+    city: response.data.cityName,
+    zip: response.data.zipCode || 'N/A',
+    latitude: response.data.latitude,
+    longitude: response.data.longitude,
+    timezone: response.data.timeZone,
+    isp: 'N/A'
+  };
+}
 
 /**
  * Obtém informações de geolocalização a partir de um IP
+ * Tenta múltiplas APIs em sequência até conseguir
  * @param {string} ip - Endereço IP
- * @returns {Promise<object>} Informações de localização
+ * @returns {Promise<Object>} Dados de geolocalização
  */
 async function getLocationFromIP(ip) {
-  // Remove possível prefixo IPv6 para IPv4
-  const cleanIP = ip.replace('::ffff:', '');
-  
-  // Ignora IPs locais
-  if (cleanIP === '127.0.0.1' || cleanIP === 'localhost' || cleanIP.startsWith('192.168.') || cleanIP.startsWith('10.')) {
-    return {
-      ip: cleanIP,
-      country: 'Local',
-      countryCode: 'LOCAL',
-      region: 'Desenvolvimento',
-      city: 'Localhost',
-      timezone: 'Local',
-      isp: 'Rede Local'
-    };
-  }
-
   try {
-    // Tenta primeiro com geoip-lite (offline, banco de dados local)
-    const geoData = geoip.lookup(cleanIP);
-    if (geoData) {
-      return {
-        ip: cleanIP,
-        country: geoData.country || 'Desconhecido',
-        countryCode: geoData.country || 'N/A',
-        region: geoData.region || 'Desconhecido',
-        city: geoData.city || 'Desconhecido',
-        timezone: geoData.timezone || 'N/A',
-        coordinates: geoData.ll ? `${geoData.ll[0]}, ${geoData.ll[1]}` : null,
-        isp: 'N/A'
-      };
+    // Normaliza o IP
+    let targetIP = normalizeIP(ip);
+    
+    // Se for IP local, busca o IP público real
+    if (!targetIP) {
+      targetIP = await getPublicIP();
     }
 
-    // Fallback 1: ip-api.com (100 requisições/minuto grátis)
-    try {
-      const response = await axios.get(`http://ip-api.com/json/${cleanIP}`, {
-        timeout: 5000
-      });
-      
-      if (response.data && response.data.status === 'success') {
-        return {
-          ip: cleanIP,
-          country: response.data.country || 'Desconhecido',
-          countryCode: response.data.countryCode || 'N/A',
-          region: response.data.regionName || 'Desconhecido',
-          city: response.data.city || 'Desconhecido',
-          timezone: response.data.timezone || 'N/A',
-          coordinates: `${response.data.lat}, ${response.data.lon}`,
-          isp: response.data.isp || 'Desconhecido'
-        };
+    console.log(`🎯 Buscando geolocalização para IP: ${targetIP}`);
+
+    // Lista de métodos para tentar (em ordem de preferência)
+    const methods = [
+      () => tryIpApi(targetIP),
+      () => tryIpapiCo(targetIP),
+      () => tryIpWhois(targetIP),
+      () => tryFreeIpApi(targetIP),
+      () => tryIpInfo(targetIP)
+    ];
+
+    // Tenta cada método até conseguir
+    for (const method of methods) {
+      try {
+        const result = await method();
+        console.log(`✅ Geolocalização obtida com sucesso!`);
+        console.log(`   📍 ${result.city}, ${result.region} - ${result.country}`);
+        return result;
+      } catch (error) {
+        console.log(`   ❌ Falhou: ${error.message}`);
+        continue;
       }
-    } catch (apiError) {
-      console.error('Erro ao consultar ip-api.com:', apiError.message);
     }
 
-    // Fallback 2: ipapi.co (30.000 requisições/mês grátis)
-    try {
-      const response = await axios.get(`https://ipapi.co/${cleanIP}/json/`, {
-        timeout: 5000
-      });
-      
-      if (response.data && !response.data.error) {
-        return {
-          ip: cleanIP,
-          country: response.data.country_name || 'Desconhecido',
-          countryCode: response.data.country_code || 'N/A',
-          region: response.data.region || 'Desconhecido',
-          city: response.data.city || 'Desconhecido',
-          timezone: response.data.timezone || 'N/A',
-          coordinates: `${response.data.latitude}, ${response.data.longitude}`,
-          isp: response.data.org || 'Desconhecido'
-        };
-      }
-    } catch (apiError) {
-      console.error('Erro ao consultar ipapi.co:', apiError.message);
-    }
+    throw new Error('Todas as APIs de geolocalização falharam');
 
-    // Se tudo falhar, retorna informações básicas
+  } catch (error) {
+    console.error('❌ Erro ao buscar geolocalização:', error.message);
+    
+    // Retorna dados padrão em caso de erro
     return {
-      ip: cleanIP,
+      ip: ip,
       country: 'Desconhecido',
       countryCode: 'N/A',
       region: 'Desconhecido',
-      city: 'Desconhecido',
+      regionCode: 'N/A',
+      city: 'Desconhecida',
+      zip: 'N/A',
+      latitude: null,
+      longitude: null,
       timezone: 'N/A',
       isp: 'Desconhecido'
-    };
-
-  } catch (error) {
-    console.error('Erro ao obter geolocalização:', error);
-    return {
-      ip: cleanIP,
-      country: 'Erro ao obter',
-      countryCode: 'N/A',
-      region: 'N/A',
-      city: 'N/A',
-      timezone: 'N/A',
-      isp: 'N/A'
     };
   }
 }
@@ -129,7 +280,19 @@ function getClientIP(req) {
   );
 }
 
+/**
+ * Formata os dados de localização para exibição
+ * @param {Object} location - Dados de localização
+ * @returns {string} String formatada
+ */
+function formatLocation(location) {
+  return `${location.city}, ${location.region} - ${location.country}`;
+}
+
 module.exports = {
   getLocationFromIP,
-  getClientIP
+  getClientIP,
+  formatLocation,
+  normalizeIP,
+  getPublicIP
 };
